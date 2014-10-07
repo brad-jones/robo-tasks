@@ -1,0 +1,27 @@
+{
+	"name": "brad-jones/robo-tasks",
+	"description": "Extra Tasks for the Robo Task Runner - http://robo.li/",
+	"homepage": "https://github.com/brad-jones/robo-tasks",
+	"keywords": ["robo", "tasks"],
+	"license": "MIT",
+	"autoload":
+	{
+		"psr-4":
+		{
+			"Brads\\Robo\\": "src"
+		}
+	},
+	"require":
+	{
+		"codegyre/robo": "*",
+		"guzzlehttp/guzzle": "4.*",
+		"phpseclib/phpseclib": "*",
+		"gears/string": "*"
+	},
+	"require-dev":
+	{
+		"phpunit/phpunit": "4.3.*",
+		"symfony/finder": "*",
+		"phpmyadmin/phpmyadmin": "dev-STABLE"
+	}
+}
