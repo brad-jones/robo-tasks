@@ -121,6 +121,15 @@ class BradsRoboTest extends PHPUnit_Framework_TestCase
 		$this->assertSame($results1, $results2);
 	}
 
+	public function testWordpressSandbox()
+	{
+		$results = $this->callRoboTask('test:wordpress-sandbox');
+
+		$this->assertEmpty($results['stderr']);
+
+		$this->assertEquals('Hello world!', $results['stdout']);
+	}
+
 	private function callRoboTask($task)
 	{
 		$cmd = 'php ./vendor/bin/robo '.$task;

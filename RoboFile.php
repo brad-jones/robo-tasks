@@ -10,6 +10,8 @@ date_default_timezone_set('UTC');
  */
 require_once(__DIR__.'/vendor/autoload.php');
 
+use Symfony\Component\Finder\Finder;
+
 class RoboFile extends Brads\Robo\Tasks
 {
 	/**
@@ -19,6 +21,13 @@ class RoboFile extends Brads\Robo\Tasks
 	public function test()
 	{
 		$this->yell('Setting up environment for unit tests.');
+
+		$db = new mysqli('127.0.0.1', 'root', '');
+
+		//$db->query('CREATE DATABASE `robowptest`;');
+		$this->taskExec('./vendor/bin/wp core download')->run();
+		$this->taskExec('./vendor/bin/wp core config --dbhost=localhost --dbname=myapp_test --dbuser=root')->run();
+		//$this->taskExec('./vendor/bin/wp core install --url=http://localhost/ --title=robowptest --admin_user=robowptest --admin_password=123 --admin_email=foo@example.com')->run();
 
 		$this->taskExecStack()
 			->exec('sudo useradd --create-home --base-dir /home "robotasks"')
@@ -61,7 +70,6 @@ class RoboFile extends Brads\Robo\Tasks
 		$this->yell('Cleaning up after tests.');
 
 		$this->say('Removing test databases.');
-		$db = new mysqli('127.0.0.1', 'root', '');
 		$db->query('DROP DATABASE `myapp_test`;');
 		$db->query('DROP DATABASE `myapp_test_pulled`;');
 		$db->query('DROP DATABASE `myapp_test_pulled_ssh`;');
@@ -73,6 +81,27 @@ class RoboFile extends Brads\Robo\Tasks
 		$this->say('Removing sftpsynctest folder.');
 		$this->taskExec('sudo chmod -R 0777 /tmp/sftpsynctest')->run();
 		$this->taskFileSystemStack()->remove('/tmp/sftpsynctest')->run();
+
+		$this->say('Removing temp wordpress install...');
+		//$db->query('DROP DATABASE `robowptest`;');
+		$wp_tmp_path = sys_get_temp_dir().'/'.md5(microtime());
+		$this->taskExec('./vendor/bin/wp core download --path='.$wp_tmp_path)->run();
+
+		$finder = new Finder();
+		$finder->files()->in($wp_tmp_path);
+		foreach ($finder as $file)
+		{
+			if (file_exists($file->getRelativePathname()))
+			{
+				unlink($file->getRelativePathname());
+			}
+		}
+
+		$this->taskDeleteDir('./wp-admin')->run();
+		$this->taskDeleteDir('./wp-content')->run();
+		$this->taskDeleteDir('./wp-includes')->run();
+		$this->taskDeleteDir($wp_tmp_path)->run();
+		unlink('wp-config.php');
 	}
 
 	/*
@@ -200,5 +229,15 @@ class RoboFile extends Brads\Robo\Tasks
 			->remotePath('/tmp/sftpsynctest')
 			->httpHost('127.0.0.1:9000')
 		->run();
+	}
+
+	public function testWordpressSandbox()
+	{
+		$results = $this->taskWordpressSandbox(function()
+		{
+			return get_posts(['ID' => 1]);
+		})->run();
+
+		echo $results[0]->post_title;
 	}
 }

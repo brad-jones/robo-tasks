@@ -17,7 +17,9 @@
 		"guzzlehttp/guzzle": "4.*",
 		"phpseclib/phpseclib": "*",
 		"gears/string": "*",
-		"interconnectit/search-replace-db": "3.*"
+		"interconnectit/search-replace-db": "3.*",
+		"jeremeamia/SuperClosure": "2.0.0-alpha2",
+		"wp-cli/wp-cli": "*"
 	},
 	"require-dev":
 	{
