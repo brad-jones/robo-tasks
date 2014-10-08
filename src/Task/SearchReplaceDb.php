@@ -4,6 +4,7 @@ use Robo\Result;
 use Robo\Output;
 use Robo\Task\Shared\DynamicConfig;
 use Robo\Task\Shared\TaskInterface;
+use Gears\String as Str;
 
 trait SearchReplaceDb
 {
@@ -105,8 +106,39 @@ class SearchReplaceDbTask implements TaskInterface
 		// Tell the world whats happening
 		$this->printTaskInfo('running <info>'.$cmd.'</info>');
 
-		// Run the command
-		exec($cmd, $output);
+		// Run the cmd
+		$descriptorspec = [1 => ["pipe", "w"], 2 => ["pipe", "w"]];
+		$process = proc_open($cmd, $descriptorspec, $pipes);
+		if (is_resource($process))
+		{
+			$output = [];
+
+			$output['stdout'] = stream_get_contents($pipes[1]);
+			fclose($pipes[1]);
+
+			$output['stderr'] = stream_get_contents($pipes[2]);
+			fclose($pipes[2]);
+
+			proc_close($process);
+		}
+		else
+		{
+			return Result::error($this, 'Failed to run the command!');
+		}
+
+		// Remove the strict standard error
+		$regx = '/(PHP\s)?Strict Standards:\s+Declaration of icit_srdb_cli::log.*?\d+/';
+		$output['stdout'] = trim(Str::replace($output['stdout'], $regx, '', true));
+		$output['stderr'] = trim(Str::replace($output['stderr'], $regx, '', true));
+
+		// Check for errors
+		if (!empty($output['stderr']))
+		{
+			return Result::error($this, $output['stderr']);
+		}
+
+		// Split stdout to an array of lines
+		$output = Str::split($output['stdout'], "\n");
 
 		// Remove the last 2 lines from the output
 		// While the search and replace might be done, other tasks may not be.
