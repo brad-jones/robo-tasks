@@ -3,10 +3,9 @@
 use Closure;
 use Robo\Result;
 use Robo\Output;
+use RuntimeException;
 use Robo\Task\Shared\DynamicConfig;
 use Robo\Task\Shared\TaskInterface;
-use SuperClosure\SerializableClosure;
-use SuperClosure\ClosureParser\Options;
 
 trait WordpressSandbox
 {
@@ -47,7 +46,7 @@ class WordpressSandboxTask implements TaskInterface
 		$serialized = \SuperClosure\serialize
 		(
 			$this->closure,
-			[Options::TURBO_MODE => true]
+			\SuperClosure\TURBO_MODE
 		);
 
 		// Create some cross platform temp filenames
@@ -64,14 +63,41 @@ class WordpressSandboxTask implements TaskInterface
 		// Build the command to run
 		$cmd = './vendor/bin/wp eval-file '.$temp_eval_file;
 
-		// Run the command
-		exec($cmd, $output);
+		// Run the cmd
+		$descriptorspec = [1 => ["pipe", "w"], 2 => ["pipe", "w"]];
+		$process = proc_open($cmd, $descriptorspec, $pipes);
+		if (is_resource($process))
+		{
+			$output = [];
+
+			$output['stdout'] = stream_get_contents($pipes[1]);
+			fclose($pipes[1]);
+
+			$output['stderr'] = stream_get_contents($pipes[2]);
+			fclose($pipes[2]);
+
+			proc_close($process);
+		}
+		else
+		{
+			$output = false;
+		}
 
 		// Delete the tmp files
 		unlink($temp_serialized_file);
 		unlink($temp_eval_file);
 
+		// Check for errors
+		if (!$output)
+		{
+			throw new RuntimeException('Failed to run wp-cli! - ('.$cmd.')');
+		}
+		elseif(!empty($output['stderr']))
+		{
+			throw new RuntimeException($output['stderr']);
+		}
+
 		// Unserialize the output
-		return json_decode($output[0]);
+		return json_decode($output['stdout']);
 	}
 }

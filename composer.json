@@ -18,7 +18,7 @@
 		"phpseclib/phpseclib": "*",
 		"gears/string": "*",
 		"interconnectit/search-replace-db": "3.*",
-		"jeremeamia/SuperClosure": "2.0.0-alpha2",
+		"brad-jones/superclosure": "2.0.0",
 		"wp-cli/wp-cli": "*"
 	},
 	"require-dev":
