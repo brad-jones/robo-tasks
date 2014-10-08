@@ -16,7 +16,8 @@
 		"codegyre/robo": "*",
 		"guzzlehttp/guzzle": "4.*",
 		"phpseclib/phpseclib": "*",
-		"gears/string": "*"
+		"gears/string": "*",
+		"interconnectit/search-replace-db": "3.*"
 	},
 	"require-dev":
 	{

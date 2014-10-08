@@ -178,6 +178,18 @@ class RoboFile extends Brads\Robo\Tasks
 		->run();
 	}
 
+	public function testSearchReplaceDb()
+	{
+		$this->taskSearchReplaceDb()
+			->dbHost('127.0.0.1')
+			->dbUser('root')
+			->dbPass('')
+			->dbName('myapp_test')
+			->searchFor('wordpress.dev-152.k-d.com.au')
+			->replaceWith('taskSearchReplaceDb')
+		->run();
+	}
+	
 	public function testSftpSync()
 	{
 		$this->taskSftpSync()

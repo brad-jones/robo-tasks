@@ -89,6 +89,17 @@ class BradsRoboTest extends PHPUnit_Framework_TestCase
 		$this->assertEquals('wp_commentmeta', $results[0][0]);
 	}
 
+	public function testSearchReplaceDb()
+	{
+		$results = $this->callRoboTask('test:search-replace-db');
+
+		$this->assertEmpty($results['stderr']);
+
+		$db = new mysqli('127.0.0.1', 'root', '', 'myapp_test');
+		$results = $db->query('SELECT `option_value` FROM `wp_options` WHERE `option_name` = "siteurl"')->fetch_all();
+		$this->assertEquals('http://taskSearchReplaceDb', $results[0][0]);
+	}
+
 	public function testSftpSync()
 	{
 		$results = $this->callRoboTask('test:sftp-sync');

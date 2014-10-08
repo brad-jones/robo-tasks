@@ -10,4 +10,5 @@ class Tasks extends \Robo\Tasks
 	use Task\PullDbViaSsh;
 	use Task\PushDbViaSsh;
 	use Task\SftpSync;
+	use Task\SearchReplaceDb;
 }
