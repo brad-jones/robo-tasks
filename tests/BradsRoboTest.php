@@ -12,6 +12,16 @@ class BradsRoboTest extends PHPUnit_Framework_TestCase
 		$this->assertTrue($db->select_db('myapp_test'));
 	}
 
+	public function testCreateDbWithHyphen()
+	{
+		$results = $this->callRoboTask('test:create-db-hyphen');
+
+		$this->assertEmpty($results['stderr']);
+
+		$db = new mysqli('127.0.0.1', 'root', '');
+		$this->assertTrue($db->select_db('myapp-test'));
+	}
+
 	public function testExecuteSqlViaPhpMyAdmin()
 	{
 		$results = $this->callRoboTask('test:execute-sql-via-php-my-admin');

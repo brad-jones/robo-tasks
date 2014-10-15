@@ -68,7 +68,7 @@ class CreateDbTask implements TaskInterface
 		}
 
 		// Create the db
-		$query = 'CREATE DATABASE IF NOT EXISTS '.$this->name;
+		$query = 'CREATE DATABASE IF NOT EXISTS `'.$this->name.'`';
 		$this->printTaskInfo('Running query - <info>'.$query.'</info>');
 		if (!$db->query($query))
 		{
