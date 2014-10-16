@@ -1,5 +1,6 @@
 <?php namespace Brads\Robo\Task;
 
+use RuntimeException;
 use Net_SFTP;
 use Crypt_RSA;
 use Robo\Result;
@@ -66,73 +67,107 @@ class PushDbViaSshTask implements TaskInterface
 			$key->loadKey(file_get_contents($this->sshKey));
 			if (!$ssh->login($this->sshUser, $key))
 			{
-				return Result::error($this, 'Failed to login via SSH using Key Based Auth.');
+				throw new RuntimeException
+				(
+					'Failed to login via SSH using Key Based Auth.'
+				);
 			}
 		}
 		else
 		{
 			if (!$ssh->login($this->sshUser, $this->sshPass))
 			{
-				return Result::error($this, 'Failed to login via SSH using Password Based Auth.');
+				throw new RuntimeException
+				(
+					'Failed to login via SSH using Password Based Auth.'
+				);
 			}
 		}
 
 		// Create our dump filename
-		$dump_name = $this->localDbName.'_'.time();
+		$dump_name = tempnam(sys_get_temp_dir(), 'dump');
 
 		// Create our dump locally
-		$cmd = 'mysqldump -h'.$this->localDbHost.' -u'.$this->localDbUser.' '.(empty($this->localDbPass) ? '' : '-p'.$this->localDbPass).' '.$this->localDbName.' > /tmp/'.$dump_name.'local.sql';
+		$cmd = 'mysqldump -h'.$this->localDbHost.' -u'.$this->localDbUser.' '.(empty($this->localDbPass) ? '' : '-p'.$this->localDbPass).' '.$this->localDbName.' > '.$dump_name;
 		$this->printTaskInfo('Dumping db on local server - <info>'.$cmd.'</info>');
 		if (!$this->taskExec($cmd)->run()->wasSuccessful())
 		{
-			return Result::error($this, 'Failed to create dump locally.');
+			throw new RuntimeException
+			(
+				'Failed to create dump locally.'.
+				'HINT: Is the `mysqldump` binary in your "PATH"?'
+			);
 		}
 
 		// Compress the dump
-		$cmd = 'gzip /tmp/'.$dump_name.'local.sql';
 		$this->printTaskInfo('Compressing dump on local server - <info>'.$cmd.'</info>');
-		if (!$this->taskExec($cmd)->run()->wasSuccessful())
+		if ($fp_out = gzopen($dump_name.'.gz', 'wb9'))
+		{ 
+			if ($fp_in = fopen($dump_name, 'rb'))
+			{ 
+				while (!feof($fp_in))
+				{
+					gzwrite($fp_out, fread($fp_in, 1024 * 512));
+				}
+
+				fclose($fp_in); 
+			}
+			else
+			{
+				throw new RuntimeException
+				(
+					'Failed to open source dump file for reading.'
+				);
+			}
+
+			gzclose($fp_out); 
+		}
+		else
 		{
-			return Result::error($this, 'Failed to compress dump locally.');
+			throw new RuntimeException
+			(
+				'Failed to open destination compressed dump file for writing.'
+			);
 		}
 
 		// Copy it up
 		$this->printTaskInfo('Transfering dump to remote.');
-		if (!$ssh->put('/tmp/'.$dump_name.'.sql.gz', '/tmp/'.$dump_name.'local.sql.gz', NET_SFTP_LOCAL_FILE))
+		$dump_name_remote = '/tmp/'.$this->remoteDbName.'-'.time().'.sql';
+		if (!$ssh->put($dump_name_remote.'.gz', $dump_name, NET_SFTP_LOCAL_FILE))
 		{
-			return Result::error($this, 'Failed to upload db dump.');
-		}
-
-		// Remove the dump from the local server
-		$this->printTaskInfo('Removing dump from local server. - <info>/tmp/'.$dump_name.'local.sql.gz</info>');
-		if (!unlink('/tmp/'.$dump_name.'local.sql.gz'))
-		{
-			return Result::error($this, 'Failed to delete dump from local.');
+			throw new RuntimeException('Failed to upload db dump.');
 		}
 
 		// Decompress dump on remote
-		$cmd = 'gzip -d /tmp/'.$dump_name.'.sql.gz';
+		$cmd = 'gzip -d '.$dump_name_remote.'.gz';
 		$this->printTaskInfo('Decompressing dump on remote server - <info>'.$cmd.'</info>');
 		$results = $ssh->exec($cmd);
 		if ($ssh->getExitStatus() > 0)
 		{
-			return Result::error($this, 'Failed to decompress dump on remote.', $results);
+			throw new RuntimeException('Failed to decompress dump on remote.');
 		}
 
 		// Import db remotely
-		$cmd = 'mysql -h'.$this->remoteDbHost.' -u'.$this->remoteDbUser.' '.(empty($this->remoteDbPass) ? '' : '-p'.$this->remoteDbPass).' '.$this->remoteDbName.' < /tmp/'.$dump_name.'.sql';
+		$cmd = 'mysql -h'.$this->remoteDbHost.' -u'.$this->remoteDbUser.' '.(empty($this->remoteDbPass) ? '' : '-p'.$this->remoteDbPass).' '.$this->remoteDbName.' < '.$dump_name_remote;
 		$this->printTaskInfo('Importing dump remotely - <info>'.$cmd.'</info>');
 		$results = $ssh->exec($cmd);
 		if ($ssh->getExitStatus() > 0)
 		{
-			return Result::error($this, 'Failed to import dump on remote.', $results);
+			throw new RuntimeException('Failed to import dump on remote.');
 		}
 
 		// Delete dump from remote server
-		$this->printTaskInfo('Removing dump from remote server. - <info>/tmp/'.$dump_name.'.sql</info>');
-		if (!$ssh->delete('/tmp/'.$dump_name.'.sql'))
+		$this->printTaskInfo('Removing dump from remote server. - <info>'.$dump_name_remote.'</info>');
+		if (!$ssh->delete($dump_name_remote))
 		{
 			return Result::error($this, 'Failed to delete dump on remote.');
+		}
+
+		// Remove the dump from the local server
+		$this->printTaskInfo('Removing dump from local server. - <info>'.$dump_name.'</info>');
+		if (!unlink($dump_name))
+		{
+			return Result::error($this, 'Failed to delete dump from local.');
 		}
 
 		// If we get to here assume everything worked

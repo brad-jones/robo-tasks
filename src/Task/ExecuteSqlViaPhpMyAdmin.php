@@ -1,5 +1,6 @@
 <?php namespace Brads\Robo\Task;
 
+use RuntimeException;
 use Robo\Result;
 use Robo\Output;
 use Robo\Task\Exec;
@@ -116,7 +117,7 @@ class ExecuteSqlViaPhpMyAdminTask implements TaskInterface
 		// Check to see if we passed auth
 		if (!Str::contains($response->getEffectiveUrl(), $token))
 		{
-			return Result::error($this, 'LOGIN FAILED');
+			throw new RuntimeException('phpMyAdmin Login Failed');
 		}
 
 		// Execute our sql
@@ -137,7 +138,17 @@ class ExecuteSqlViaPhpMyAdminTask implements TaskInterface
 		// Check to make sure it worked
 		if (!Str::contains($response, 'Your SQL query has been executed successfully') && !Str::contains($response, 'Query took'))
 		{
-			return Result::error($this, 'Your query failed.', $response);
+			// Save the response to a temp file for later inspection
+			$responseLog = tempnam(sys_get_temp_dir(), 'taskExecuteSqlViaPhpMyAdminLog');
+			file_put_contents($responseLog, $response);
+
+			// Bail out
+			throw new RuntimeException
+			(
+				'Your query failed. '.
+				'A log of the complete HTTP response has been saved to: '.
+				$responseLog
+			);
 		}
 
 		// If we get to here assume everything worked

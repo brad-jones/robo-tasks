@@ -1,5 +1,6 @@
 <?php namespace Brads\Robo\Task;
 
+use RuntimeException;
 use Net_SFTP;
 use Crypt_RSA;
 use Robo\Result;
@@ -67,14 +68,20 @@ class PullDbViaSshTask implements TaskInterface
 			$key->loadKey(file_get_contents($this->sshKey));
 			if (!$ssh->login($this->sshUser, $key))
 			{
-				return Result::error($this, 'Failed to login via SSH using Key Based Auth.');
+				throw new RuntimeException
+				(
+					'Failed to login via SSH using Key Based Auth.'
+				);
 			}
 		}
 		else
 		{
 			if (!$ssh->login($this->sshUser, $this->sshPass))
 			{
-				return Result::error($this, 'Failed to login via SSH using Password Based Auth.');
+				throw new RuntimeException
+				(
+					'Failed to login via SSH using Password Based Auth.'
+				);
 			}
 		}
 
@@ -87,7 +94,11 @@ class PullDbViaSshTask implements TaskInterface
 		$results = $ssh->exec($cmd);
 		if ($ssh->getExitStatus() > 0)
 		{
-			return Result::error($this, 'Failed to create dump on remote server.', $results);
+			throw new RuntimeException
+			(
+				'Failed to create dump on remote server. '.
+				$results
+			);
 		}
 		
 		// Compressing dump
@@ -96,40 +107,43 @@ class PullDbViaSshTask implements TaskInterface
 		$results = $ssh->exec($cmd);
 		if ($ssh->getExitStatus() > 0)
 		{
-			return Result::error($this, 'Failed to compress dump on remote server.', $results);
+			throw new RuntimeException
+			(
+				'Failed to compress dump on remote server. '.
+				$results
+			);
 		}
 
 		// Copy it down locally
 		$this->printTaskInfo('Transfering dump to local.');
-		if (!$ssh->get('/tmp/'.$dump_name.'.sql.gz', '/tmp/'.$dump_name.'local.sql.gz'))
+		$temp_dump_name = tempnam(sys_get_temp_dir(), 'dump');
+		$temp_dump = $temp_dump_name.'.sql.gz';
+		if (!$ssh->get('/tmp/'.$dump_name.'.sql.gz', $temp_dump))
 		{
-			return Result::error($this, 'Failed to download dump.');
+			throw new RuntimeException('Failed to download dump.');
 		}
 
 		// Remove the dump from the remote server
 		$this->printTaskInfo('Removing dump from remote server - <info>rm /tmp/'.$dump_name.'.sql.gz</info>');
 		if (!$ssh->delete('/tmp/'.$dump_name.'.sql.gz'))
 		{
-			return Result::error($this, 'Failed to delete dump on remote server.');
+			throw new RuntimeException('Failed to delete dump on remote server.');
 		}
 
 		// Import the dump locally
 		if (
-			!$this->taskImportSqlDump('/tmp/'.$dump_name.'local.sql.gz')
+			!$this->taskImportSqlDump($temp_dump)
 				->host($this->localDbHost)
 				->user($this->localDbUser)
 				->pass($this->localDbPass)
 				->name($this->localDbName)
 			->run()->wasSuccessful()
 		){
-			return Result::error($this, 'Failed to import dump on local server.');
+			throw new RuntimeException('Failed to import dump on local server.');
 		}
 
 		$this->printTaskInfo('Deleting dump locally.');
-		if (!unlink('/tmp/'.$dump_name.'local.sql.gz'))
-		{
-			return Result::error($this, 'Failed to delete dump on local server.');
-		}
+		unlink($temp_dump); unlink($temp_dump_name);
 
 		// If we get to here assume everything worked
 		return Result::success($this);

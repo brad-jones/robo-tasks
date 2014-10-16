@@ -51,7 +51,7 @@ class WordpressSandboxTask implements TaskInterface
 
 		// Create some cross platform temp filenames
 		$temp_serialized_file = tempnam(sys_get_temp_dir(), 'wpSandBoxSerialized');
-		$temp_eval_file = tempnam(sys_get_temp_dir(), 'wpSandBoxEval').'.php';
+		$temp_eval_file = tempnam(sys_get_temp_dir(), 'wpSandBoxEval');
 
 		// Create our temp eval file
 		$php = '<?php $c = unserialize(file_get_contents("'.$temp_serialized_file.'")); echo json_encode($c());';

@@ -71,6 +71,7 @@ class RoboFile extends Brads\Robo\Tasks
 
 		$this->say('Removing test databases.');
 		$db->query('DROP DATABASE `myapp_test`;');
+		$db->query('DROP DATABASE `myapp_test_gz`;');
 		$db->query('DROP DATABASE `myapp-test`;');
 		$db->query('DROP DATABASE `myapp_test_pulled`;');
 		$db->query('DROP DATABASE `myapp_test_pulled_ssh`;');
@@ -151,6 +152,16 @@ class RoboFile extends Brads\Robo\Tasks
 			->user('root')
 			->pass('')
 			->name('myapp_test')
+		->run();
+	}
+
+	public function testImportSqlDumpGz()
+	{
+		$this->taskImportSqlDump('./tests/data/dump.sql.gz')
+			->host('127.0.0.1')
+			->user('root')
+			->pass('')
+			->name('myapp_test_gz')
 		->run();
 	}
 

@@ -47,6 +47,17 @@ class BradsRoboTest extends PHPUnit_Framework_TestCase
 		$this->assertEquals('wp_commentmeta', $results[0][0]);
 	}
 
+	public function testImportSqlDumpWithGz()
+	{
+		$results = $this->callRoboTask('test:import-sql-dump-gz');
+
+		$this->assertEmpty($results['stderr']);
+
+		$db = new mysqli('127.0.0.1', 'root', '', 'myapp_test_gz');
+		$results = $db->query('SHOW tables;')->fetch_all();
+		$this->assertEquals('wp_commentmeta', $results[0][0]);
+	}
+
 	public function testPullDbViaPhpMyAdmin()
 	{
 		$results = $this->callRoboTask('test:pull-db-via-php-my-admin');

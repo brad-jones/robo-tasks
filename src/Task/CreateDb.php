@@ -1,6 +1,7 @@
 <?php namespace Brads\Robo\Task;
 
 use mysqli;
+use RuntimeException;
 use Robo\Result;
 use Robo\Output;
 use Robo\Task\Shared\DynamicConfig;
@@ -59,9 +60,8 @@ class CreateDbTask implements TaskInterface
 		$db = new mysqli($this->host, $this->user, $this->pass);
 		if ($db->connect_errno)
 		{
-			return Result::error
+			throw new RuntimeException
 			(
-				$this,
 				'Failed to connect to MySQL: ('.$db->connect_errno.') '.
 				$db->connect_error
 			);
@@ -72,9 +72,8 @@ class CreateDbTask implements TaskInterface
 		$this->printTaskInfo('Running query - <info>'.$query.'</info>');
 		if (!$db->query($query))
 		{
-			return Result::error
+			throw new RuntimeException
 			(
-				$this,
 				'Failed to create database: ('.$db->errorno.') '.
 				$db->error
 			);
@@ -88,9 +87,8 @@ class CreateDbTask implements TaskInterface
 			// Select db
 			if (!$db->select_db($this->name))
 			{
-				return Result::error
+				throw new RuntimeException
 				(
-					$this,
 					'Failed to select database: ('.$db->errorno.') '.
 					$db->error
 				);
@@ -101,9 +99,8 @@ class CreateDbTask implements TaskInterface
 			$this->printTaskInfo('Running query - <info>'.$query.'</info>');
 			if (!$db->query($query))
 			{
-				return Result::error
+				throw new RuntimeException
 				(
-					$this,
 					'Query failed - '.$query.': ('.$db->errorno.') '.
 					$db->error
 				);
@@ -118,9 +115,8 @@ class CreateDbTask implements TaskInterface
 					$this->printTaskInfo('Running query - <info>'.$query.'</info>');
 					if (!$db->query($query))
 					{
-						return Result::error
+						throw new RuntimeException
 						(
-							$this,
 							'Failed to drop table - '.$row[0].': ('.$db->errorno.') '.
 							$db->error
 						);
@@ -133,9 +129,8 @@ class CreateDbTask implements TaskInterface
 			$this->printTaskInfo('Running query - <info>'.$query.'</info>');
 			if(!$db->query($query))
 			{
-				return Result::error
+				throw new RuntimeException
 				(
-					$this,
 					'Query failed - '.$query.': ('.$db->errorno.') '.
 					$db->error
 				);

@@ -1,8 +1,10 @@
 <?php namespace Brads\Robo\Task;
 
+use RuntimeException;
 use Robo\Result;
 use Robo\Output;
 use Robo\Task\Exec;
+use Robo\Task\FileSystem;
 use Robo\Task\Shared\DynamicConfig;
 use Robo\Task\Shared\TaskInterface;
 
@@ -17,6 +19,7 @@ trait ImportSqlDump
 class ImportSqlDumpTask implements TaskInterface
 {
 	use Exec;
+	use FileSystem;
 	use Output;
 	use CreateDb;
 	use DynamicConfig;
@@ -63,38 +66,56 @@ class ImportSqlDumpTask implements TaskInterface
 	 */
 	public function run()
 	{
-		// Let make sure we have a database
-		if (!
-			$this->taskCreateDb()
+		// Lets make sure we have a database
+		if (!$this->taskCreateDb()
 				->host($this->host)
 				->user($this->user)
 				->pass($this->pass)
 				->name($this->name)
 				->dropTables(true)
-			->run()
+			->run()->wasSuccessful()
 		){
-			return Result::error($this, 'CreateDb Failed');
+			throw new RuntimeException('We failed to create the db.');
 		}
 
 		// Do we need to uncompress it first?
 		if (strpos($this->dump, '.gz') !== false)
 		{
-			// Lets copy the dump to a temp location
-			// and leave the original untouched
-			$temp_dump = tempnam(sys_get_temp_dir(), 'dump').'.sql.gz';
-			if (!$this->taskExec('cp '.$this->dump.' '.$temp_dump)->run()->wasSuccessful())
+			// Create a temp dump file
+			$temp_dump = tempnam(sys_get_temp_dir(), 'dump');
+
+			// Decompress the dump file
+			if ($fp_out = fopen($temp_dump, 'wb'))
+			{ 
+				if ($fp_in = gzopen($this->dump, 'rb'))
+				{ 
+					while (!gzeof($fp_in))
+					{
+						fwrite($fp_out, gzread($fp_in, 1024 * 512));
+					}
+
+					fclose($fp_in); 
+				}
+				else
+				{
+					throw new RuntimeException
+					(
+						'Failed to open source dump file for reading.'
+					);
+				}
+
+				gzclose($fp_out); 
+			}
+			else
 			{
-				return Result::error($this, 'Copy Failed');
+				throw new RuntimeException
+				(
+					'Failed to open temp dump file for writing.'
+				);
 			}
 
-			// Now lets deflate the dump
-			if (!$this->taskExec('gzip -d '.$temp_dump)->run()->wasSuccessful())
-			{
-				return Result::error($this, 'Deflate Failed');
-			}
-
-			// Set the dump the delated version
-			$this->dump = str_replace('.gz', '', $temp_dump);
+			// Set the dump the deflated version
+			$this->dump = $temp_dump;
 
 			// Delete the temp later
 			$delete_me = $this->dump;
@@ -108,10 +129,14 @@ class ImportSqlDumpTask implements TaskInterface
 		// Run the command
 		if (!$this->taskExec($cmd)->run()->wasSuccessful())
 		{
-			return Result::error($this, 'Import Failed');
+			throw new RuntimeException
+			(
+				'We failed to import your dump. '.
+				'HINT: Is the `mysql` binary in your "PATH"?'
+			);
 		}
 
-		// Delete the defalted temp dump file
+		// Delete the deflated temp dump file
 		if (isset($delete_me))
 		{
 			$this->printTaskInfo('Deleting temp dump file.');

@@ -1,5 +1,6 @@
 <?php namespace Brads\Robo\Task;
 
+use RuntimeException;
 use Robo\Result;
 use Robo\Output;
 use Robo\Task\Exec;
@@ -102,7 +103,7 @@ class PullDbViaPhpMyAdminTask implements TaskInterface
 		// Check to see if we passed auth
 		if (!Str::contains($response->getEffectiveUrl(), $token))
 		{
-			return Result::error($this, 'LOGIN FAILED');
+			throw new RuntimeException('phpMyAdmin Login Failed');
 		}
 
 		// Grab a list of tables
@@ -165,26 +166,26 @@ class PullDbViaPhpMyAdminTask implements TaskInterface
 		])->getBody();
 
 		// Create our dump filename
-		$dump_name = $this->localDbName.'_'.time();
+		$dump_name = tempnam(sys_get_temp_dir(), 'dump');
 
 		// Save the dump
-		$this->printTaskInfo('Saving dump - <info>/tmp/'.$dump_name.'.sql</info>');
-		file_put_contents('/tmp/'.$dump_name.'.sql', $sql);
+		$this->printTaskInfo('Saving dump - <info>'.$dump_name.'</info>');
+		file_put_contents($dump_name, $sql);
 
 		// Import the dump locally
 		if (
-			!$this->taskImportSqlDump('/tmp/'.$dump_name.'.sql')
+			!$this->taskImportSqlDump($dump_name)
 				->host($this->localDbHost)
 				->user($this->localDbUser)
 				->pass($this->localDbPass)
 				->name($this->localDbName)
 			->run()->wasSuccessful()
 		){
-			return Result::error($this, 'Failed to import dump on local server.');
+			throw new RuntimeException('Failed to import dump on local server.');
 		}
 
 		$this->printTaskInfo('Deleting dump locally.');
-		if (!unlink('/tmp/'.$dump_name.'.sql'))
+		if (!unlink($dump_name))
 		{
 			return Result::error($this, 'Failed to delete dump on local server.');
 		}

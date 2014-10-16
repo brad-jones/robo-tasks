@@ -1,5 +1,6 @@
 <?php namespace Brads\Robo\Task;
 
+use RuntimeException;
 use Robo\Result;
 use Robo\Output;
 use Robo\Task\Exec;
@@ -101,26 +102,53 @@ class PushDbViaPhpMyAdminTask implements TaskInterface
 		// Check to see if we passed auth
 		if (!Str::contains($response->getEffectiveUrl(), $token))
 		{
-			return Result::error($this, 'LOGIN FAILED');
+			throw new RuntimeException('phpMyAdmin Login Failed');
 		}
 
 		// Create our dump filename
-		$dump_name = $this->localDbName.'_'.time();
+		$dump_name = tempnam(sys_get_temp_dir(), 'dump');
 
 		// Create our dump locally
-		$cmd = 'mysqldump -h'.$this->localDbHost.' -u'.$this->localDbUser.' '.(empty($this->localDbPass) ? '' : '-p'.$this->localDbPass).' '.$this->localDbName.' > /tmp/'.$dump_name.'.sql';
+		$cmd = 'mysqldump -h'.$this->localDbHost.' -u'.$this->localDbUser.' '.(empty($this->localDbPass) ? '' : '-p'.$this->localDbPass).' '.$this->localDbName.' > '.$dump_name;
 		$this->printTaskInfo('Dumping db on local server - <info>'.$cmd.'</info>');
 		if (!$this->taskExec($cmd)->run()->wasSuccessful())
 		{
-			return Result::error($this, 'Failed to create dump locally.');
+			throw new RuntimeException
+			(
+				'Failed to create dump locally.'.
+				'HINT: Is the `mysqldump` binary in your "PATH"?'
+			);
 		}
 
 		// Compress the dump
-		$cmd = 'gzip /tmp/'.$dump_name.'.sql';
 		$this->printTaskInfo('Compressing dump on local server - <info>'.$cmd.'</info>');
-		if (!$this->taskExec($cmd)->run()->wasSuccessful())
+		if ($fp_out = gzopen($dump_name.'.gz', 'wb9'))
+		{ 
+			if ($fp_in = fopen($dump_name, 'rb'))
+			{ 
+				while (!feof($fp_in))
+				{
+					gzwrite($fp_out, fread($fp_in, 1024 * 512));
+				}
+
+				fclose($fp_in); 
+			}
+			else
+			{
+				throw new RuntimeException
+				(
+					'Failed to open source dump file for reading.'
+				);
+			}
+
+			gzclose($fp_out); 
+		}
+		else
 		{
-			return Result::error($this, 'Failed to compress dump locally.');
+			throw new RuntimeException
+			(
+				'Failed to open destination compressed dump file for writing.'
+			);
 		}
 
 		// Grab a list of tables
@@ -169,7 +197,7 @@ class PushDbViaPhpMyAdminTask implements TaskInterface
 			// Check to make sure it worked
 			if (!Str::contains($response, 'Your SQL query has been executed successfully') && !Str::contains($response, 'Query took'))
 			{
-				return Result::error($this, 'Failed to drop tables via phpmyadmin.');
+				throw new RuntimeException('Failed to drop tables via phpmyadmin.');
 			}
 		}
 
@@ -184,7 +212,7 @@ class PushDbViaPhpMyAdminTask implements TaskInterface
 				'token' => $token,
 				'import_type' => 'database',
 				'file_location' => 'on',
-				'import_file' => fopen('/tmp/'.$dump_name.'.sql.gz', 'r'),
+				'import_file' => fopen($dump_name.'.gz', 'r'),
 				'MAX_FILE_SIZE' => '209715200',
 				'charset_of_file' => 'utf-8',
 				'allow_interrupt' => 'yes',
@@ -198,15 +226,12 @@ class PushDbViaPhpMyAdminTask implements TaskInterface
 		// Check that it worked
 		if (!Str::contains($response, 'Import has been successfully finished'))
 		{
-			return Result::error($this, 'Failed to import dump via phpmyadmin. OH NO - we just dropped all the tables!!!');
+			throw new RuntimeException('Failed to import dump via phpmyadmin. OH NO - we just dropped all the tables!!!');
 		}
 
 		// Remove the dump from the local server
-		$this->printTaskInfo('Removing dump from local server. - <info>/tmp/'.$dump_name.'.sql.gz</info>');
-		if (!unlink('/tmp/'.$dump_name.'.sql.gz'))
-		{
-			return Result::error($this, 'Failed to delete dump from local.');
-		}
+		$this->printTaskInfo('Removing dump from local server. - <info>'.$dump_name.'</info>');
+		unlink($dump_name); unlink($dump_name.'.gz');
 
 		// If we get to here assume everything worked
 		return Result::success($this);
