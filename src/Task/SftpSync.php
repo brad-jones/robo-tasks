@@ -67,18 +67,24 @@ class SftpSyncTask implements TaskInterface
 		'./wp-content/w3tc-config',
 		'./wp-content/cache',
 		'./wp-content/languages',
+		'./wp-content/uploads',
 		'./app/config/local',
 		'./app/storage',
 		'./node_modules',
 		'gruntfile.js',
 		'package.json',
-		'assets/cache'
+		'assets/cache',
+		'./.bowerrc',
+		'./bower.json',
+		'./robo',
+		'./RoboFile.php'
 	];
 
 	// Setter for the ignore property
 	public function ignore($value)
 	{
 		$this->ignore = array_merge($this->ignore, $value);
+		return $this;
 	}
 
 	/**
@@ -190,6 +196,10 @@ class SftpSyncTask implements TaskInterface
 		$folders_to_delete = [];
 
 		// Read in the gitignore, if git ignores it so do we
+		/*
+		 * This causes issues as it does not parse the git ignore 100%
+		 * accurately, taking into account rules beginning with !
+		 * 
 		if (file_exists($this->localPath.'/.gitignore'))
 		{
 			foreach (file($this->localPath.'/.gitignore') as $value)
@@ -197,6 +207,7 @@ class SftpSyncTask implements TaskInterface
 				$files_to_ignore[] = str_replace('//', '/', './'.trim($value));
 			}
 		}
+		*/
 
 		// Merge in our own ignores
 		$files_to_ignore = array_merge($files_to_ignore, $this->ignore);
