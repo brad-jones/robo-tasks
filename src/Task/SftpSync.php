@@ -166,7 +166,7 @@ class SftpSyncTask implements TaskInterface
 		// Get the local and remote file arrays
 		$this->printTaskInfo('Get a list of files on the local and remote servers.');
 		$local_files = $this->get_local_file_hashes($this->localPath);
-		$remote_files = \GuzzleHttp\get('http://'.$this->httpHost.'/sftp-upload-helper.php?token='.$this->token)->json();
+		$remote_files = $this->get_remote_files();
 
 		// Delete helper script
 		$this->printTaskInfo('Deleting sftp helper script.');
@@ -581,5 +581,11 @@ class SftpSyncTask implements TaskInterface
 		}
 
 		return $files;
+	}
+
+	private function get_remote_files()
+	{
+		$client = new \GuzzleHttp\Client(['base_url' => 'http://'.$this->httpHost]);
+		return $client->get('/sftp-upload-helper.php', ['query' => ['token' => $this->token]])->json();
 	}
 }
