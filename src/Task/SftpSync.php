@@ -45,39 +45,7 @@ class SftpSyncTask implements TaskInterface
 	// Some files/folders to ignore
 	private $ignore =
 	[
-		'./sftp-upload-helper.php',
-		'wp-config',
-		'robots',
-		'readme',
-		'README',
-		'htaccess',
-		'htpasswd',
-		'license',
-		'.kd',
-		'.psd',
-		'.less',
-		'.git',
-		'phpunit.xml',
-		'./google',
-		'./composer.json',
-		'./composer.lock',
-		'./documentations',
-		'./wp-content/ether-cache',
-		'./wp-content/upgrade',
-		'./wp-content/w3tc-config',
-		'./wp-content/cache',
-		'./wp-content/languages',
-		'./wp-content/uploads',
-		'./app/config/local',
-		'./app/storage',
-		'./node_modules',
-		'gruntfile.js',
-		'package.json',
-		'assets/cache',
-		'./.bowerrc',
-		'./bower.json',
-		'./robo',
-		'./RoboFile.php'
+		'./sftp-upload-helper.php'
 	];
 
 	// Setter for the ignore property
