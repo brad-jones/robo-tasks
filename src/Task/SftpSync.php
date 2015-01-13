@@ -45,7 +45,8 @@ class SftpSyncTask implements TaskInterface
 	// Some files/folders to ignore
 	private $ignore =
 	[
-		'./sftp-upload-helper.php'
+		'./sftp-upload-helper.php',
+		'./disabled.htaccess'
 	];
 
 	// Setter for the ignore property
@@ -162,20 +163,6 @@ class SftpSyncTask implements TaskInterface
 		$files_to_delete = [];
 		$folders_to_create = [];
 		$folders_to_delete = [];
-
-		// Read in the gitignore, if git ignores it so do we
-		/*
-		 * This causes issues as it does not parse the git ignore 100%
-		 * accurately, taking into account rules beginning with !
-		 * 
-		if (file_exists($this->localPath.'/.gitignore'))
-		{
-			foreach (file($this->localPath.'/.gitignore') as $value)
-			{
-				$files_to_ignore[] = str_replace('//', '/', './'.trim($value));
-			}
-		}
-		*/
 
 		// Merge in our own ignores
 		$files_to_ignore = array_merge($files_to_ignore, $this->ignore);
@@ -551,9 +538,38 @@ class SftpSyncTask implements TaskInterface
 		return $files;
 	}
 
+	/**
+	 * Method: get_remote_files
+	 * =========================================================================
+	 * This uses giuzzle to call the sftp helper script.
+	 * 
+	 * Parameters:
+	 * -------------------------------------------------------------------------
+	 * n/a
+	 * 
+	 * Returns:
+	 * -------------------------------------------------------------------------
+	 * array
+	 */
 	private function get_remote_files()
 	{
 		$client = new \GuzzleHttp\Client(['base_url' => 'http://'.$this->httpHost]);
-		return $client->get('/sftp-upload-helper.php', ['query' => ['token' => $this->token]])->json();
+
+		$results = $client->get('/sftp-upload-helper.php', ['query' => ['token' => $this->token]])->json();
+
+		$new = [];
+		foreach ($results as $key => $value)
+		{
+			if ($key == './disabled.htaccess')
+			{
+				$new['./.htaccess'] = $value;
+			}
+			else
+			{
+				$new[$key] = $value;
+			}
+		}
+
+		return $new;
 	}
 }
