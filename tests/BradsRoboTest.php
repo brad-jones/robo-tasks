@@ -153,7 +153,7 @@ class BradsRoboTest extends PHPUnit_Framework_TestCase
 
 	private function callRoboTask($task)
 	{
-		$cmd = 'php ./vendor/bin/robo '.$task;
+		$cmd = './robo '.$task;
 		$descriptorspec = [1 => ["pipe", "w"], 2 => ["pipe", "w"]];
 		$process = proc_open($cmd, $descriptorspec, $pipes);
 

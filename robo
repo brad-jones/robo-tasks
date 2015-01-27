@@ -1,17 +1,17 @@
+#!/usr/bin/env php
 <?php
 
-// PHP will throw out warnings which mucks up our
-// unit testing if we don't set a timezone explicitly.
-date_default_timezone_set('UTC');
-
-/*
- * Include our local composer autoloader just in case
- * we are called with a globally installed version of robo.
- */
+// Install Composer
 require_once(__DIR__.'/vendor/autoload.php');
 
+// Import some namespaces
 use Symfony\Component\Finder\Finder;
 
+/**
+ * This is project's console commands configuration for Robo task runner.
+ * 
+ * @see http://robo.li/"
+ */
 class RoboFile extends Brads\Robo\Tasks
 {
 	/**
@@ -65,7 +65,7 @@ class RoboFile extends Brads\Robo\Tasks
 
 		$this->yell('Running unit tests.');
 
-		$this->taskPHPUnit()->arg('./tests')->run();
+		$testResults = $this->taskPHPUnit()->arg('./tests')->run();
 
 		$this->yell('Cleaning up after tests.');
 
@@ -104,6 +104,9 @@ class RoboFile extends Brads\Robo\Tasks
 		$this->taskDeleteDir('./wp-includes')->run();
 		$this->taskDeleteDir($wp_tmp_path)->run();
 		unlink('wp-config.php');
+
+		// Set the correct exit code based on the actual unit tests
+		exit($testResults->getExitCode());
 	}
 
 	/*
@@ -122,6 +125,8 @@ class RoboFile extends Brads\Robo\Tasks
 			->pass('')
 			->name('myapp_test')
 		->run();
+
+		$this->say('dfhfdh');
 	}
 
 	public function testCreateDbHyphen()
@@ -263,3 +268,7 @@ class RoboFile extends Brads\Robo\Tasks
 		echo $results[0]->post_title;
 	}
 }
+
+// Initialise the runner
+$runner = new \Brads\Robo\Runner();
+$runner->execute('RoboFile');
