@@ -6,4 +6,4 @@ php:
 
 install: "composer install"
 
-script: "./vendor/bin/robo test"
+script: "./robo test"
