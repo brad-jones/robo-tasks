@@ -2,6 +2,7 @@
 
 class Tasks extends \Robo\Tasks
 {
+	use \Gears\Asset;
 	use Task\CreateDb;
 	use Task\ExecuteSqlViaPhpMyAdmin;
 	use Task\ImportSqlDump;

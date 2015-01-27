@@ -13,10 +13,11 @@
 	},
 	"require":
 	{
-		"codegyre/robo": "*",
+		"codegyre/robo": "0.5.*",
 		"guzzlehttp/guzzle": "~5.0",
 		"phpseclib/phpseclib": "*",
 		"gears/string": "*",
+		"gears/asset": "*",
 		"interconnectit/search-replace-db": "3.*",
 		"brad-jones/superclosure": "2.0.0",
 		"wp-cli/wp-cli": "*"
