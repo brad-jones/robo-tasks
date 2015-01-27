@@ -127,16 +127,16 @@ class BradsRoboTest extends PHPUnit_Framework_TestCase
 
 		$results1 = [];
 		$finder1 = new Symfony\Component\Finder\Finder();
-		foreach ($finder1->files()->in('./src') as $item)
+		foreach ($finder1->files()->in('./src')->sortByName() as $item)
 		{
-			$results1[] = $item->getRelativePath();
+			$results1[] = $item->getRelativePathname();
 		}
 
 		$results2 = [];
 		$finder2 = new Symfony\Component\Finder\Finder();
-		foreach ($finder2->files()->in('/tmp/sftpsynctest') as $item)
+		foreach ($finder2->files()->in('/tmp/sftpsynctest')->sortByName() as $item)
 		{
-			$results2[] = $item->getRelativePath();
+			$results2[] = $item->getRelativePathname();
 		}
 
 		$this->assertSame($results1, $results2);
