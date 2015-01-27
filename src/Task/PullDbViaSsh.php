@@ -3,11 +3,6 @@
 use RuntimeException;
 use Net_SFTP;
 use Crypt_RSA;
-use Robo\Result;
-use Robo\Output;
-use Robo\Task\Exec;
-use Robo\Task\Shared\DynamicConfig;
-use Robo\Task\Shared\TaskInterface;
 
 trait PullDbViaSsh
 {
@@ -17,12 +12,11 @@ trait PullDbViaSsh
 	}
 }
 
-class PullDbViaSshTask implements TaskInterface
+class PullDbViaSshTask extends \Robo\Task\BaseTask
 {
-	use Output;
-	use Exec;
-	use DynamicConfig;
-	use ImportSqlDump;
+	use \Robo\Task\Base\loadTasks;
+	use \Brads\Robo\Task\ImportSqlDump;
+	use \Robo\Common\DynamicParams;
 
 	// Ssh details
 	private $sshHost;
@@ -146,6 +140,6 @@ class PullDbViaSshTask implements TaskInterface
 		unlink($temp_dump); unlink($temp_dump_name);
 
 		// If we get to here assume everything worked
-		return Result::success($this);
+		return \Robo\Result::success($this);
 	}
 }

@@ -2,10 +2,6 @@
 
 use mysqli;
 use RuntimeException;
-use Robo\Result;
-use Robo\Output;
-use Robo\Task\Shared\DynamicConfig;
-use Robo\Task\Shared\TaskInterface;
 
 trait CreateDb
 {
@@ -15,10 +11,9 @@ trait CreateDb
 	}
 }
 
-class CreateDbTask implements TaskInterface
+class CreateDbTask extends \Robo\Task\BaseTask
 {
-	use Output;
-	use DynamicConfig;
+	use \Robo\Common\DynamicParams;
 
 	// The database details
 	private $host = 'localhost';
@@ -141,6 +136,6 @@ class CreateDbTask implements TaskInterface
 		}
 
 		// If we get to here assume everything worked
-		return Result::success($this);
+		return \Robo\Result::success($this);
 	}
 }

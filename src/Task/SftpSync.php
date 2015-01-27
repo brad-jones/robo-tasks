@@ -2,10 +2,6 @@
 
 use Net_SFTP;
 use Crypt_RSA;
-use Robo\Result;
-use Robo\Output;
-use Robo\Task\Shared\DynamicConfig;
-use Robo\Task\Shared\TaskInterface;
 
 /*
  * NOTE: The exact same thing could be done with FTP,
@@ -20,10 +16,9 @@ trait SftpSync
 	}
 }
 
-class SftpSyncTask implements TaskInterface
+class SftpSyncTask extends \Robo\Task\BaseTask
 {
-	use Output;
-	use DynamicConfig;
+	use \Robo\Common\DynamicParams;
 
 	// If true we will only tell you what would has changed.
 	private $dryRun = false;
@@ -95,7 +90,7 @@ class SftpSyncTask implements TaskInterface
 			$key->loadKey(file_get_contents($this->sshKey));
 			if (!$sftp->login($this->sshUser, $key))
 			{
-				return Result::error
+				return \Robo\Result::error
 				(
 					$this,
 					'Failed to login via SFTP using Key Based Auth.'
@@ -106,7 +101,7 @@ class SftpSyncTask implements TaskInterface
 		{
 			if (!$sftp->login($this->sftpUser, $this->sftpPass))
 			{
-				return Result::error
+				return \Robo\Result::error
 				(
 					$this,
 					'Failed to login via SFTP using Password Based Auth.'
@@ -121,7 +116,7 @@ class SftpSyncTask implements TaskInterface
 			$this->printTaskInfo('Renaming .htaccess file');
 			if (!$sftp->rename($this->remotePath.'/.htaccess', $this->remotePath.'/disabled.htaccess'))
 			{
-				return Result::error($this, 'Failed to rename .htaccess file');
+				return \Robo\Result::error($this, 'Failed to rename .htaccess file');
 			}
 		}
 
@@ -129,7 +124,7 @@ class SftpSyncTask implements TaskInterface
 		$this->printTaskInfo('Uploading sftp helper script.');
 		if (!$sftp->put($this->remotePath.'/sftp-upload-helper.php', $this->sftp_upload_helper()))
 		{
-			return Result::error($this, 'UPLOAD OF HELPER SCRIPT FAILED');
+			return \Robo\Result::error($this, 'UPLOAD OF HELPER SCRIPT FAILED');
 		}
 
 		// Get the local and remote file arrays
@@ -141,7 +136,7 @@ class SftpSyncTask implements TaskInterface
 		$this->printTaskInfo('Deleting sftp helper script.');
 		if (!$sftp->delete($this->remotePath.'/sftp-upload-helper.php'))
 		{
-			return Result::error($this, 'FAILED TO DELETE HELPER SCRIPT');
+			return \Robo\Result::error($this, 'FAILED TO DELETE HELPER SCRIPT');
 		}
 
 		// Rename htaccess file back
@@ -151,7 +146,7 @@ class SftpSyncTask implements TaskInterface
 			$this->printTaskInfo('Renaming .htaccess file back to original');
 			if (!$sftp->rename($this->remotePath.'/disabled.htaccess', $this->remotePath.'/.htaccess'))
 			{
-				return Result::error($this, 'Failed to rename .htaccess file back to original. OH SNAP... better fix this ASAP!');
+				return \Robo\Result::error($this, 'Failed to rename .htaccess file back to original. OH SNAP... better fix this ASAP!');
 			}
 		}
 
@@ -287,7 +282,7 @@ class SftpSyncTask implements TaskInterface
 
 				if (!$sftp->mkdir($remotepath))
 				{
-					return Result::error($this, 'FAILED TO CREATE FOLDER: '.$remotepath);
+					return \Robo\Result::error($this, 'FAILED TO CREATE FOLDER: '.$remotepath);
 				}
 
 				$this->printTaskInfo('Folder Created: '.$file);
@@ -304,7 +299,7 @@ class SftpSyncTask implements TaskInterface
 
 				if (!$sftp->put($remotepath, $localpath, NET_SFTP_LOCAL_FILE))
 				{
-					return Result::error($this, 'FAILED TO UPLOAD FILE: '.$file);
+					return \Robo\Result::error($this, 'FAILED TO UPLOAD FILE: '.$file);
 				}
 			}
 
@@ -336,7 +331,7 @@ class SftpSyncTask implements TaskInterface
 				{
 					if (!$sftp->delete($remotepath))
 					{
-						return Result::error($this, 'FAILED TO DELETE FILE: '.$file);
+						return \Robo\Result::error($this, 'FAILED TO DELETE FILE: '.$file);
 					}
 					else
 					{
@@ -355,7 +350,7 @@ class SftpSyncTask implements TaskInterface
 					{
 						if (!$sftp->delete($remotepath))
 						{
-							return Result::error($this, 'FAILED TO DELETE FILE: '.$file);
+							return \Robo\Result::error($this, 'FAILED TO DELETE FILE: '.$file);
 						}
 
 						$this->printTaskInfo('Deleted: '.$file);
@@ -390,7 +385,7 @@ class SftpSyncTask implements TaskInterface
 				{
 					if (!$sftp->rmdir($remotepath))
 					{
-						return Result::error($this, 'FAILED TO DELETE FOLDER: '.$file);
+						return \Robo\Result::error($this, 'FAILED TO DELETE FOLDER: '.$file);
 					}
 					
 					$this->printTaskInfo('Deleted Folder: '.$file);
@@ -407,7 +402,7 @@ class SftpSyncTask implements TaskInterface
 					{
 						if (!$sftp->rmdir($remotepath))
 						{
-							return Result::error($this, 'FAILED TO DELETE FOLDER: '.$file);
+							return \Robo\Result::error($this, 'FAILED TO DELETE FOLDER: '.$file);
 						}
 						
 						$this->printTaskInfo('Deleted Folder: '.$file);
@@ -433,7 +428,7 @@ class SftpSyncTask implements TaskInterface
 		}
 
 		// If we get to here we assume everything worked
-		return Result::success($this);
+		return \Robo\Result::success($this);
 	}
 
 	/**

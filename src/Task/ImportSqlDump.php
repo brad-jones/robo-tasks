@@ -1,12 +1,7 @@
 <?php namespace Brads\Robo\Task;
 
 use RuntimeException;
-use Robo\Result;
-use Robo\Output;
-use Robo\Task\Exec;
 use Robo\Task\FileSystem;
-use Robo\Task\Shared\DynamicConfig;
-use Robo\Task\Shared\TaskInterface;
 
 trait ImportSqlDump
 {
@@ -16,13 +11,12 @@ trait ImportSqlDump
 	}
 }
 
-class ImportSqlDumpTask implements TaskInterface
+class ImportSqlDumpTask extends \Robo\Task\BaseTask
 {
-	use Exec;
-	use FileSystem;
-	use Output;
-	use CreateDb;
-	use DynamicConfig;
+	use \Robo\Task\Base\loadTasks;
+	use \Robo\Task\FileSystem\loadTasks;
+	use \Brads\Robo\Task\CreateDb;
+	use \Robo\Common\DynamicParams;
 
 	// The database details
 	private $host = 'localhost';
@@ -147,6 +141,6 @@ class ImportSqlDumpTask implements TaskInterface
 		}
 
 		// If we get to here assume everything worked
-		return Result::success($this);
+		return \Robo\Result::success($this);
 	}
 }

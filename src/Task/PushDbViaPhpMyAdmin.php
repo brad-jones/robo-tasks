@@ -1,13 +1,8 @@
 <?php namespace Brads\Robo\Task;
 
 use RuntimeException;
-use Robo\Result;
-use Robo\Output;
-use Robo\Task\Exec;
-use Robo\Task\Shared\DynamicConfig;
-use Robo\Task\Shared\TaskInterface;
-use GuzzleHttp\Client as Guzzle;
 use Gears\String as Str;
+use GuzzleHttp\Client as Guzzle;
 
 trait PushDbViaPhpMyAdmin
 {
@@ -17,11 +12,10 @@ trait PushDbViaPhpMyAdmin
 	}
 }
 
-class PushDbViaPhpMyAdminTask implements TaskInterface
+class PushDbViaPhpMyAdminTask extends \Robo\Task\BaseTask
 {
-	use Output;
-	use Exec;
-	use DynamicConfig;
+	use \Robo\Task\Base\loadTasks;
+	use \Robo\Common\DynamicParams;
 
 	// The PhpMyAdmin details
 	private $phpMyAdminUrl;
@@ -234,6 +228,6 @@ class PushDbViaPhpMyAdminTask implements TaskInterface
 		unlink($dump_name); unlink($dump_name.'.gz');
 
 		// If we get to here assume everything worked
-		return Result::success($this);
+		return \Robo\Result::success($this);
 	}
 }

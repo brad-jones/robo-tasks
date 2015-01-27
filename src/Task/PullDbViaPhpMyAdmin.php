@@ -1,13 +1,8 @@
 <?php namespace Brads\Robo\Task;
 
 use RuntimeException;
-use Robo\Result;
-use Robo\Output;
-use Robo\Task\Exec;
-use Robo\Task\Shared\DynamicConfig;
-use Robo\Task\Shared\TaskInterface;
-use GuzzleHttp\Client as Guzzle;
 use Gears\String as Str;
+use GuzzleHttp\Client as Guzzle;
 
 trait PullDbViaPhpMyAdmin
 {
@@ -17,12 +12,11 @@ trait PullDbViaPhpMyAdmin
 	}
 }
 
-class PullDbViaPhpMyAdminTask implements TaskInterface
+class PullDbViaPhpMyAdminTask extends \Robo\Task\BaseTask
 {
-	use Output;
-	use Exec;
-	use DynamicConfig;
-	use ImportSqlDump;
+	use \Robo\Task\Base\loadTasks;
+	use \Brads\Robo\Task\ImportSqlDump;
+	use \Robo\Common\DynamicParams;
 
 	// The PhpMyAdmin details
 	private $phpMyAdminUrl;
@@ -191,6 +185,6 @@ class PullDbViaPhpMyAdminTask implements TaskInterface
 		}
 
 		// If we get to here assume everything worked
-		return Result::success($this);
+		return \Robo\Result::success($this);
 	}
 }

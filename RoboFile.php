@@ -55,12 +55,12 @@ class RoboFile extends Brads\Robo\Tasks
 
 		$this->taskServer(8000)
 			->dir('./vendor/phpmyadmin/phpmyadmin')
-			->background(true)
+			->background()
 		->run();
 
 		$this->taskServer(9000)
 			->dir('/tmp/sftpsynctest')
-			->background(true)
+			->background()
 		->run();
 
 		$this->yell('Running unit tests.');

@@ -1,9 +1,5 @@
 <?php namespace Brads\Robo\Task;
 
-use Robo\Result;
-use Robo\Output;
-use Robo\Task\Shared\DynamicConfig;
-use Robo\Task\Shared\TaskInterface;
 use Gears\String as Str;
 
 trait SearchReplaceDb
@@ -14,10 +10,9 @@ trait SearchReplaceDb
 	}
 }
 
-class SearchReplaceDbTask implements TaskInterface
+class SearchReplaceDbTask extends \Robo\Task\BaseTask
 {
-	use Output;
-	use DynamicConfig;
+	use \Robo\Common\DynamicParams;
 
 	// The database to perform the search and replace on
 	private $dbHost = 'localhost';
@@ -123,7 +118,7 @@ class SearchReplaceDbTask implements TaskInterface
 		}
 		else
 		{
-			return Result::error($this, 'Failed to run the command!');
+			return \Robo\Result::error($this, 'Failed to run the command!');
 		}
 
 		// Remove the strict standard error
@@ -134,7 +129,7 @@ class SearchReplaceDbTask implements TaskInterface
 		// Check for errors
 		if (!empty($output['stderr']))
 		{
-			return Result::error($this, $output['stderr']);
+			return \Robo\Result::error($this, $output['stderr']);
 		}
 
 		// Split stdout to an array of lines
@@ -165,11 +160,11 @@ class SearchReplaceDbTask implements TaskInterface
 		// Return success of failure
 		if ($status == 'And we\'re done!')
 		{
-			return Result::success($this);
+			return \Robo\Result::success($this);
 		}
 		else
 		{
-			return Result::error($this, $status);
+			return \Robo\Result::error($this, $status);
 		}
 	}
 }

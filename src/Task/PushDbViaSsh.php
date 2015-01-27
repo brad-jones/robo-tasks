@@ -3,11 +3,6 @@
 use RuntimeException;
 use Net_SFTP;
 use Crypt_RSA;
-use Robo\Result;
-use Robo\Output;
-use Robo\Task\Exec;
-use Robo\Task\Shared\DynamicConfig;
-use Robo\Task\Shared\TaskInterface;
 
 trait PushDbViaSsh
 {
@@ -17,11 +12,10 @@ trait PushDbViaSsh
 	}
 }
 
-class PushDbViaSshTask implements TaskInterface
+class PushDbViaSshTask extends \Robo\Task\BaseTask
 {
-	use Output;
-	use Exec;
-	use DynamicConfig;
+	use \Robo\Task\Base\loadTasks;
+	use \Robo\Common\DynamicParams;
 
 	// Ssh details
 	private $sshHost;
@@ -171,6 +165,6 @@ class PushDbViaSshTask implements TaskInterface
 		}
 
 		// If we get to here assume everything worked
-		return Result::success($this);
+		return \Robo\Result::success($this);
 	}
 }

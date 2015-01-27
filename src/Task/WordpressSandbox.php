@@ -1,11 +1,7 @@
 <?php namespace Brads\Robo\Task;
 
 use Closure;
-use Robo\Result;
-use Robo\Output;
 use RuntimeException;
-use Robo\Task\Shared\DynamicConfig;
-use Robo\Task\Shared\TaskInterface;
 
 trait WordpressSandbox
 {
@@ -15,10 +11,9 @@ trait WordpressSandbox
 	}
 }
 
-class WordpressSandboxTask implements TaskInterface
+class WordpressSandboxTask extends \Robo\Task\BaseTask
 {
-	use Output;
-	use DynamicConfig;
+	use \Robo\Common\DynamicParams;
 
 	private $closure;
 
