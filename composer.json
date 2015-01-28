@@ -15,17 +15,24 @@
 	{
 		"codegyre/robo": "0.5.*",
 		"guzzlehttp/guzzle": "~5.0",
-		"phpseclib/phpseclib": "*",
 		"gears/string": "*",
-		"gears/asset": "*",
-		"interconnectit/search-replace-db": "3.*",
-		"brad-jones/superclosure": "2.0.0",
-		"wp-cli/wp-cli": "*"
+		"gears/asset": "*"
 	},
 	"require-dev":
 	{
 		"phpunit/phpunit": "4.3.*",
 		"symfony/finder": "*",
+		"wp-cli/wp-cli": "*",
+		"jeremeamia/superclosure": "2.*",
+		"interconnectit/search-replace-db": "3.*",
+		"phpseclib/phpseclib": "*",
 		"phpmyadmin/phpmyadmin": "dev-STABLE"
+	},
+	"suggest":
+	{
+		"wp-cli/wp-cli": "Install this to support the Wordpress Sandbox task.",
+		"jeremeamia/superclosure": "Install this to support the Wordpress Sandbox task.",
+		"interconnectit/search-replace-db": "Install this to support the SearchReplaceDb task.",
+		"phpseclib/phpseclib": "Install this to support any task using SSH/SFTP."
 	}
 }

@@ -2,6 +2,8 @@
 
 use Closure;
 use RuntimeException;
+use SuperClosure\Serializer;
+use SuperClosure\Analyzer\TokenAnalyzer;
 
 trait WordpressSandbox
 {
@@ -19,7 +21,8 @@ class WordpressSandboxTask extends \Robo\Task\BaseTask
 
 	public function __construct(Closure $closure)
 	{
-		$this->closure = $closure;
+		// Unbind the closure from the robofile class
+		$this->closure = $closure->bindTo(null);
 	}
 
 	/**
@@ -38,11 +41,8 @@ class WordpressSandboxTask extends \Robo\Task\BaseTask
 	public function run()
 	{
 		// Serialize the closure.
-		$serialized = \SuperClosure\serialize
-		(
-			$this->closure,
-			\SuperClosure\TURBO_MODE
-		);
+		$serializer = new Serializer(new TokenAnalyzer);
+		$serialized = $serializer->serialize($this->closure);
 
 		// Create some cross platform temp filenames
 		$temp_serialized_file = tempnam(sys_get_temp_dir(), 'wpSandBoxSerialized');

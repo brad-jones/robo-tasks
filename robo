@@ -125,8 +125,6 @@ class RoboFile extends Brads\Robo\Tasks
 			->pass('')
 			->name('myapp_test')
 		->run();
-
-		$this->say('dfhfdh');
 	}
 
 	public function testCreateDbHyphen()
