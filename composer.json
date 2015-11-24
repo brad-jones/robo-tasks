@@ -13,14 +13,14 @@
 	},
 	"require":
 	{
-		"codegyre/robo": "0.5.*",
-		"guzzlehttp/guzzle": "~5.0",
+		"codegyre/robo": "0.6.*",
+		"guzzlehttp/guzzle": "~6.0",
 		"gears/string": "*",
 		"gears/asset": "*"
 	},
 	"require-dev":
 	{
-		"phpunit/phpunit": "4.3.*",
+		"phpunit/phpunit": "5.0.*",
 		"symfony/finder": "*",
 		"wp-cli/wp-cli": "*",
 		"jeremeamia/superclosure": "2.*",
