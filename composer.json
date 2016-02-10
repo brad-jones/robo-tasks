@@ -4,6 +4,11 @@
 	"homepage": "https://github.com/brad-jones/robo-tasks",
 	"keywords": ["robo", "tasks"],
 	"license": "MIT",
+	"repositories":
+	[{
+		"type": "composer",
+		"url": "https://www.phpmyadmin.net"
+	}],
 	"autoload":
 	{
 		"psr-4":
@@ -13,8 +18,8 @@
 	},
 	"require":
 	{
-		"codegyre/robo": "0.5.*",
-		"guzzlehttp/guzzle": "~5.0",
+		"codegyre/robo": "0.6.*",
+		"guzzlehttp/guzzle": "~6.0",
 		"gears/string": "*",
 		"gears/asset": "*"
 	},
@@ -26,7 +31,7 @@
 		"jeremeamia/superclosure": "2.*",
 		"interconnectit/search-replace-db": "3.*",
 		"phpseclib/phpseclib": "*",
-		"phpmyadmin/phpmyadmin": "dev-STABLE"
+		"phpmyadmin/phpmyadmin": "*"
 	},
 	"suggest":
 	{
