@@ -1,6 +1,9 @@
 <?php namespace Brads\Robo\Task;
 
-use Gears\String as Str;
+use Robo\Result;
+use Robo\Task\BaseTask;
+use Robo\Common\DynamicParams;
+use function Stringy\create as s;
 
 trait SearchReplaceDb
 {
@@ -10,50 +13,70 @@ trait SearchReplaceDb
 	}
 }
 
-class SearchReplaceDbTask extends \Robo\Task\BaseTask
+class SearchReplaceDbTask extends BaseTask
 {
-	use \Robo\Common\DynamicParams;
+	use DynamicParams;
 
-	// The database to perform the search and replace on
+	/** @var string */
 	private $dbHost = 'localhost';
+
+	/** @var string */
 	private $dbUser = 'root';
+
+	/** @var string */
 	private $dbPass;
+
+	/** @var string */
 	private $dbName;
 
-	// The whole point of this task :)
+	/** @var string */
 	private $searchFor;
+
+	/** @var string */
 	private $replaceWith;
 
-	// If set only runs the script on the specified table(s).
-	// Provide an array for multiple values.
+	/**
+	 * If set only runs the script on the specified table(s).
+	 * Provide an array for multiple values.
+	 *
+	 * @var mixed
+	 */
 	private $tables;
 
-	// If set only runs the script on the specified column(s).
-	// Provide an array for multiple values.
+	/**
+	 * If set only runs the script on the specified column(s).
+	 * Provide an array for multiple values.
+	 *
+	 * @var mixed
+	 */
 	private $columns;
 
-	// If set to true, we consider the searchFor value a regular expression
+	/**
+	 * If set to true, we consider the searchFor value a regular expression.
+	 *
+	 * @var boolean
+	 */
 	private $useRegx = false;
 
-	// If true we will only tell you what we would have replaced.
-	// No replacements will actually be made.
+	/**
+	 * If true we will only tell you what we would have replaced.
+	 * No replacements will actually be made.
+	 *
+	 * @var boolean
+	 */
 	private $dryRun = false;
 
-	// If false we will not output anything
+	/**
+	 * If false we will not output anything.
+	 *
+	 * @var boolean
+	 */
 	private $verbose = false;
 
 	/**
-	 * Method: run
-	 * =========================================================================
-	 * The main run method.
-	 * 
-	 * Parameters:
-	 * -------------------------------------------------------------------------
-	 * n/a
-	 * 
-	 * Returns:
-	 * -------------------------------------------------------------------------
-	 * Robo\Result
+	 * Executes the SearchReplaceDb Task.
+	 *
+	 * @return Robo\Result
 	 */
 	public function run()
 	{
@@ -77,7 +100,7 @@ class SearchReplaceDbTask extends \Robo\Task\BaseTask
 			{
 				$this->tables = implode(',', $this->tables);
 			}
-			
+
 			$cmd .= '--tables "'.$this->tables.'" ';
 		}
 
@@ -88,7 +111,7 @@ class SearchReplaceDbTask extends \Robo\Task\BaseTask
 			{
 				$this->columns = implode(',', $this->columns);
 			}
-			
+
 			$cmd .= '--include-cols "'.$this->columns.'" ';
 		}
 
@@ -118,22 +141,22 @@ class SearchReplaceDbTask extends \Robo\Task\BaseTask
 		}
 		else
 		{
-			return \Robo\Result::error($this, 'Failed to run the command!');
+			return Result::error($this, 'Failed to run the command!');
 		}
 
 		// Remove the strict standard error
 		$regx = '/(PHP\s)?Strict Standards:\s+Declaration of icit_srdb_cli::log.*?\d+/';
-		$output['stdout'] = trim(Str::replace($output['stdout'], $regx, '', true));
-		$output['stderr'] = trim(Str::replace($output['stderr'], $regx, '', true));
+		$output['stdout'] = trim(s($output['stdout'])->regexReplace($regx, ''));
+		$output['stderr'] = trim(s($output['stderr'])->regexReplace($regx, ''));
 
 		// Check for errors
 		if (!empty($output['stderr']))
 		{
-			return \Robo\Result::error($this, $output['stderr']);
+			return Result::error($this, $output['stderr']);
 		}
 
 		// Split stdout to an array of lines
-		$output = Str::split($output['stdout'], "\n");
+		$output = explode("\n", $output['stdout']);
 
 		// Remove the last 2 lines from the output
 		// While the search and replace might be done, other tasks may not be.
@@ -160,11 +183,11 @@ class SearchReplaceDbTask extends \Robo\Task\BaseTask
 		// Return success of failure
 		if ($status == 'And we\'re done!')
 		{
-			return \Robo\Result::success($this);
+			return Result::success($this);
 		}
 		else
 		{
-			return \Robo\Result::error($this, $status);
+			return Result::error($this, $status);
 		}
 	}
 }

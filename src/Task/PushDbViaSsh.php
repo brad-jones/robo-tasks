@@ -1,8 +1,12 @@
 <?php namespace Brads\Robo\Task;
 
 use RuntimeException;
-use Net_SFTP;
-use Crypt_RSA;
+use Robo\Result;
+use Robo\Task\BaseTask;
+use Robo\Task\Base\loadTasks;
+use Robo\Common\DynamicParams;
+use phpseclib\Net\SFTP;
+use phpseclib\Crypt\RSA;
 
 trait PushDbViaSsh
 {
@@ -12,52 +16,61 @@ trait PushDbViaSsh
 	}
 }
 
-class PushDbViaSshTask extends \Robo\Task\BaseTask
+class PushDbViaSshTask extends BaseTask
 {
-	use \Robo\Task\Base\loadTasks;
-	use \Robo\Common\DynamicParams;
+	use loadTasks, DynamicParams;
 
-	// Ssh details
+	/** @var string */
 	private $sshHost;
+
+	/** @var string */
 	private $sshUser;
+
+	/** @var string */
 	private $sshPass;
+
+	/** @var string */
 	private $sshKey;
 
-	// The remote db details
+	/** @var string */
 	private $remoteDbHost = 'localhost';
+
+	/** @var string */
 	private $remoteDbUser = 'root';
+
+	/** @var string */
 	private $remoteDbPass;
+
+	/** @var string */
 	private $remoteDbName;
 
-	// The local db details
+	/** @var string */
 	private $localDbHost = 'localhost';
+
+	/** @var string */
 	private $localDbUser = 'root';
+
+	/** @var string */
 	private $localDbPass;
+
+	/** @var string */
 	private $localDbName;
 
 	/**
-	 * Method: run
-	 * =========================================================================
-	 * The main run method.
-	 * 
-	 * Parameters:
-	 * -------------------------------------------------------------------------
-	 * n/a
-	 * 
-	 * Returns:
-	 * -------------------------------------------------------------------------
-	 * Robo\Result
+	 * Executes the PushDbViaSsh Task.
+	 *
+	 * @return Robo\Result
 	 */
 	public function run()
 	{
 		// Login to the remote server
 		$this->printTaskInfo('Logging into remote server - <info>ssh://'.$this->sshUser.'@'.$this->sshHost.'/</info>');
-		$ssh = new Net_SFTP($this->sshHost);
+		$ssh = new SFTP($this->sshHost);
 
 		// Do we use password or a key
 		if (file_exists($this->sshKey) && empty($this->sshPass))
 		{
-			$key = new Crypt_RSA();
+			$key = new RSA();
 			$key->loadKey(file_get_contents($this->sshKey));
 			if (!$ssh->login($this->sshUser, $key))
 			{
@@ -82,7 +95,12 @@ class PushDbViaSshTask extends \Robo\Task\BaseTask
 		$dump_name = tempnam(sys_get_temp_dir(), 'dump');
 
 		// Create our dump locally
-		$cmd = 'mysqldump -h'.$this->localDbHost.' -u'.$this->localDbUser.' '.(empty($this->localDbPass) ? '' : '-p'.$this->localDbPass).' '.$this->localDbName.' > '.$dump_name;
+		$cmd = 'mysqldump'.
+			' -h'.$this->localDbHost.
+			' -u'.$this->localDbUser.
+			' '.(empty($this->localDbPass) ? '' : '-p'.$this->localDbPass).
+			' '.$this->localDbName.' > '.$dump_name
+		;
 		$this->printTaskInfo('Dumping db on local server - <info>'.$cmd.'</info>');
 		if (!$this->taskExec($cmd)->run()->wasSuccessful())
 		{
@@ -96,15 +114,15 @@ class PushDbViaSshTask extends \Robo\Task\BaseTask
 		// Compress the dump
 		$this->printTaskInfo('Compressing dump on local server - <info>'.$cmd.'</info>');
 		if ($fp_out = gzopen($dump_name.'.gz', 'wb9'))
-		{ 
+		{
 			if ($fp_in = fopen($dump_name, 'rb'))
-			{ 
+			{
 				while (!feof($fp_in))
 				{
 					gzwrite($fp_out, fread($fp_in, 1024 * 512));
 				}
 
-				fclose($fp_in); 
+				fclose($fp_in);
 			}
 			else
 			{
@@ -114,7 +132,7 @@ class PushDbViaSshTask extends \Robo\Task\BaseTask
 				);
 			}
 
-			gzclose($fp_out); 
+			gzclose($fp_out);
 		}
 		else
 		{
@@ -127,7 +145,7 @@ class PushDbViaSshTask extends \Robo\Task\BaseTask
 		// Copy it up
 		$this->printTaskInfo('Transfering dump to remote.');
 		$dump_name_remote = '/tmp/'.$this->remoteDbName.'-'.time().'.sql';
-		if (!$ssh->put($dump_name_remote.'.gz', $dump_name, NET_SFTP_LOCAL_FILE))
+		if (!$ssh->put($dump_name_remote.'.gz', $dump_name, SFTP::SOURCE_LOCAL_FILE))
 		{
 			throw new RuntimeException('Failed to upload db dump.');
 		}
@@ -142,7 +160,12 @@ class PushDbViaSshTask extends \Robo\Task\BaseTask
 		}
 
 		// Import db remotely
-		$cmd = 'mysql -h'.$this->remoteDbHost.' -u'.$this->remoteDbUser.' '.(empty($this->remoteDbPass) ? '' : '-p'.$this->remoteDbPass).' '.$this->remoteDbName.' < '.$dump_name_remote;
+		$cmd = 'mysql'.
+			' -h'.$this->remoteDbHost.
+			' -u'.$this->remoteDbUser.
+			' '.(empty($this->remoteDbPass) ? '' : '-p'.$this->remoteDbPass).
+			' '.$this->remoteDbName.' < '.$dump_name_remote
+		;
 		$this->printTaskInfo('Importing dump remotely - <info>'.$cmd.'</info>');
 		$results = $ssh->exec($cmd);
 		if ($ssh->getExitStatus() > 0)
@@ -165,6 +188,6 @@ class PushDbViaSshTask extends \Robo\Task\BaseTask
 		}
 
 		// If we get to here assume everything worked
-		return \Robo\Result::success($this);
+		return Result::success($this);
 	}
 }

@@ -9,7 +9,7 @@ use Symfony\Component\Finder\Finder;
 
 /**
  * This is project's console commands configuration for Robo task runner.
- * 
+ *
  * @see http://robo.li/"
  */
 class RoboFile extends Brads\Robo\Tasks
@@ -24,14 +24,13 @@ class RoboFile extends Brads\Robo\Tasks
 
 		$db = new mysqli('127.0.0.1', 'root', '');
 
-		//$db->query('CREATE DATABASE `robowptest`;');
-		$this->taskExec('./vendor/bin/wp core download')->run();
-		$this->taskExec('./vendor/bin/wp core config --dbhost=localhost --dbname=myapp_test --dbuser=root')->run();
-		//$this->taskExec('./vendor/bin/wp core install --url=http://localhost/ --title=robowptest --admin_user=robowptest --admin_password=123 --admin_email=foo@example.com')->run();
+		$this->_exec('./vendor/bin/wp core download');
+		$this->_exec('./vendor/bin/wp core config --dbhost=127.0.0.1 --dbname=myapp_test --dbuser=root');
 
 		$this->taskExecStack()
 			->exec('sudo useradd --create-home --base-dir /home "robotasks"')
 			->exec('echo "robotasks:GdtfF5Tm" | sudo chpasswd')
+			->exec('sudo service sshd start')
 		->run();
 
 		$this->taskFileSystemStack()->copy
@@ -42,16 +41,22 @@ class RoboFile extends Brads\Robo\Tasks
 		)->run();
 
 		$this->taskReplaceInFile('./vendor/phpmyadmin/phpmyadmin/config.inc.php')
+			->from('$cfg[\'blowfish_secret\'] = \'\';')
+			->to('$cfg[\'blowfish_secret\'] = \'rkv28fKzze6M4txB\';')
+		->run();
+
+		$this->taskReplaceInFile('./vendor/phpmyadmin/phpmyadmin/config.inc.php')
 			->from('$cfg[\'Servers\'][$i][\'AllowNoPassword\'] = false;')
-			->to
-			(
-				'$cfg[\'Servers\'][$i][\'AllowNoPassword\'] = true;'."\n".
-				'$i++; $cfg[\'Servers\'][$i][\'host\'] = \'localhost2\';'
-			)
+			->to('$cfg[\'Servers\'][$i][\'AllowNoPassword\'] = true;'."\n".'$i++;'."\n".'$cfg[\'Servers\'][$i][\'host\'] = \'bogus\';')
+		->run();
+
+		$this->taskReplaceInFile('./vendor/phpmyadmin/phpmyadmin/config.inc.php')
+			->from('$cfg[\'Servers\'][$i][\'host\'] = \'localhost\';')
+			->to('$cfg[\'Servers\'][$i][\'host\'] = \'127.0.0.1\';')
 		->run();
 
 		$this->taskFileSystemStack()->mkdir('/tmp/sftpsynctest')->run();
-		$this->taskExec('sudo chmod 0777 /tmp/sftpsynctest')->run();
+		$this->_exec('sudo chmod 0777 /tmp/sftpsynctest');
 
 		$this->taskServer(8000)
 			->dir('./vendor/phpmyadmin/phpmyadmin')
@@ -77,17 +82,17 @@ class RoboFile extends Brads\Robo\Tasks
 		$db->query('DROP DATABASE `myapp_test_pulled_ssh`;');
 
 		$this->say('Removing test ssh user.');
-		$this->taskExec('sudo killall -KILL -u robotasks')->run();
-		$this->taskExec('sudo userdel -r robotasks')->run();
+		$this->_exec('sudo killall -KILL -u robotasks');
+		$this->_exec('sudo userdel -r robotasks');
+		$this->_exec('sudo service sshd stop');
 
 		$this->say('Removing sftpsynctest folder.');
-		$this->taskExec('sudo chmod -R 0777 /tmp/sftpsynctest')->run();
+		$this->_exec('sudo chmod -R 0777 /tmp/sftpsynctest');
 		$this->taskFileSystemStack()->remove('/tmp/sftpsynctest')->run();
 
 		$this->say('Removing temp wordpress install...');
-		//$db->query('DROP DATABASE `robowptest`;');
 		$wp_tmp_path = sys_get_temp_dir().'/'.md5(microtime());
-		$this->taskExec('./vendor/bin/wp core download --path='.$wp_tmp_path)->run();
+		$this->_exec('./vendor/bin/wp core download --path='.$wp_tmp_path);
 
 		$finder = new Finder();
 		$finder->files()->in($wp_tmp_path);
@@ -99,10 +104,14 @@ class RoboFile extends Brads\Robo\Tasks
 			}
 		}
 
-		$this->taskDeleteDir('./wp-admin')->run();
-		$this->taskDeleteDir('./wp-content')->run();
-		$this->taskDeleteDir('./wp-includes')->run();
-		$this->taskDeleteDir($wp_tmp_path)->run();
+		$this->_deleteDir
+		([
+			'./wp-admin',
+			'./wp-content',
+			'./wp-includes',
+			$wp_tmp_path
+		]);
+
 		unlink('wp-config.php');
 
 		// Set the correct exit code based on the actual unit tests
@@ -143,7 +152,18 @@ class RoboFile extends Brads\Robo\Tasks
 			->phpMyAdminUrl('http://127.0.0.1:8000/')
 			->phpMyAdminUser('root')
 			->phpMyAdminPass('')
-			->remoteDbHost('localhost')
+			->remoteDbHost('127.0.0.1')
+			->remoteDbName('myapp_test')
+		->run();
+	}
+
+	public function testExecuteSqlViaPhpMyAdminBogus()
+	{
+		$this->taskExecuteSqlViaPhpMyAdmin('CREATE TABLE test (id INT, foo VARCHAR(255));')
+			->phpMyAdminUrl('http://127.0.0.1:8000/')
+			->phpMyAdminUser('root')
+			->phpMyAdminPass('')
+			->remoteDbHost('bogus')
 			->remoteDbName('myapp_test')
 		->run();
 	}
@@ -174,7 +194,7 @@ class RoboFile extends Brads\Robo\Tasks
 			->phpMyAdminUrl('http://127.0.0.1:8000/')
 			->phpMyAdminUser('root')
 			->phpMyAdminPass('')
-			->remoteDbHost('localhost')
+			->remoteDbHost('127.0.0.1')
 			->remoteDbName('myapp_test')
 			->localDbHost('127.0.0.1')
 			->localDbUser('root')
@@ -243,7 +263,7 @@ class RoboFile extends Brads\Robo\Tasks
 			->replaceWith('taskSearchReplaceDb')
 		->run();
 	}
-	
+
 	public function testSftpSync()
 	{
 		$this->taskSftpSync()
@@ -268,5 +288,4 @@ class RoboFile extends Brads\Robo\Tasks
 }
 
 // Initialise the runner
-$runner = new \Brads\Robo\Runner();
-$runner->execute('RoboFile');
+(new Brads\Robo\Runner(RoboFile::class))->execute();

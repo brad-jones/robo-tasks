@@ -1,160 +1,144 @@
 <?php namespace Brads\Robo\Task;
 
 use RuntimeException;
-use Gears\String as Str;
-use GuzzleHttp\Client as Guzzle;
+use Robo\Result;
+use Robo\Task\BaseTask;
+use Robo\Task\Base\loadTasks;
+use Robo\Common\DynamicParams;
+use Brads\Robo\Task\ImportSqlDump;
+use GuzzleHttp\Client as Http;
+use GuzzleHttp\TransferStats;
+use function Stringy\create as s;
+use Brads\Robo\Shared\PhpMyAdminLogin;
+use Brads\Robo\Shared\PhpMyAdminLoginTask;
+use Brads\Robo\Shared\PhpMyAdminListTables;
 
 trait PullDbViaPhpMyAdmin
 {
-	protected function taskPullDbViaPhpMyAdmin()
+	protected function taskPullDbViaPhpMyAdmin(PhpMyAdminLoginTask $loggedIn = null)
 	{
-		return new PullDbViaPhpMyAdminTask();
+		return new PullDbViaPhpMyAdminTask($loggedIn);
 	}
 }
 
-class PullDbViaPhpMyAdminTask extends \Robo\Task\BaseTask
+class PullDbViaPhpMyAdminTask extends BaseTask
 {
-	use \Robo\Task\Base\loadTasks;
-	use \Brads\Robo\Task\ImportSqlDump;
-	use \Robo\Common\DynamicParams;
+	use loadTasks, DynamicParams, ImportSqlDump,
+	PhpMyAdminLogin, PhpMyAdminListTables;
 
-	// The PhpMyAdmin details
+	/** @var string */
 	private $phpMyAdminUrl;
+
+	/** @var string */
 	private $phpMyAdminUser;
+
+	/** @var string */
 	private $phpMyAdminPass;
 
-	// The remote db details
+	/** @var string */
 	private $remoteDbHost;
+
+	/** @var string */
 	private $remoteDbName;
 
-	// The local db details
+	/** @var string */
 	private $localDbHost = 'localhost';
+
+	/** @var string */
 	private $localDbUser = 'root';
+
+	/** @var string */
 	private $localDbPass;
+
+	/** @var string */
 	private $localDbName;
 
+	/** @var PhpMyAdminLoginTask */
+    private $loggedIn;
+
 	/**
-	 * Method: run
-	 * =========================================================================
-	 * The main run method.
-	 * 
-	 * Parameters:
-	 * -------------------------------------------------------------------------
-	 * n/a
-	 * 
-	 * Returns:
-	 * -------------------------------------------------------------------------
-	 * Robo\Result
+	 * @param PhpMyAdminLoginTask $loggedIn An already logged in task.
+	 */
+	public function __construct(PhpMyAdminLoginTask $loggedIn = null)
+	{
+		$this->loggedIn = $loggedIn;
+	}
+
+	/**
+	 * Executes the PullDbViaPhpMyAdmin Task.
+	 *
+	 * @return Robo\Result
 	 */
 	public function run()
 	{
-		// Setup guzzle client
-		$http = new Guzzle
-		([
-			'base_url' => $this->phpMyAdminUrl,
-			'defaults' =>
-			[
-				'cookies' => true,
-				'verify' => false
-			]
-		]);
-
-		// Tell the world whats happening
-		$this->printTaskInfo
-		(
-			'Logging into phpmyadmin - <info>'.
-			str_replace
-			(
-				'://',
-				'://'.$this->phpMyAdminUser.':'.$this->phpMyAdminPass.'@',
-				$this->phpMyAdminUrl
-			).'</info>'
-		);
-		
-		// Make an intial request so we can extract some info
-		$html = $http->get()->getBody();
-
-		// Grab the token
-		preg_match('#<input type="hidden" name="token" value="(.*?)" />#s', $html, $matches);
-		$token = $matches[1];
-
-		// Get the server id
-		preg_match('#<option value="(\d+)".*?>'.preg_quote($this->remoteDbHost, '#').'.*?</option>#', $html, $matches);
-		$server_id = $matches[1];
-
-		// Login - session saved to cookie by guzzle
-		$response = $http->post(null,
-		[
-			'body' =>
-			[
-				'pma_username' => $this->phpMyAdminUser,
-				'pma_password' => $this->phpMyAdminPass,
-				'server' => $server_id,
-				'token' => $token
-			]
-		]);
-
-		// Check to see if we passed auth
-		if (!Str::contains($response->getEffectiveUrl(), $token))
+		// First lets login to the phpMyAdmin Server, if not already.
+		if ($this->loggedIn == null)
 		{
-			throw new RuntimeException('phpMyAdmin Login Failed');
+			$result = $this->taskPhpMyAdminLogin()
+				->phpMyAdminUrl($this->phpMyAdminUrl)
+				->phpMyAdminUser($this->phpMyAdminUser)
+				->phpMyAdminPass($this->phpMyAdminPass)
+				->remoteDbHost($this->remoteDbHost)
+			->run();
+
+			if (!$result->wasSuccessful())
+			{
+				throw new RuntimeException('Failed to Login!');
+			}
+
+			$this->loggedIn = $result->getTask();
 		}
 
-		// Grab a list of tables
-		$this->printTaskInfo('Getting list of tables.');
-		$html = $http->get('db_structure.php',
-		[
-			'query' =>
-			[
-				'db' => $this->remoteDbName,
-				'server' => $server_id,
-				'token' => $token
-			]
-		])->getBody();
+		// Get a list of tables from phpMyAdmin
+		$result = $this->taskPhpMyAdminListTables($this->loggedIn)
+			->remoteDbName($this->remoteDbName)
+		->run();
 
-		preg_match_all('/'.preg_quote('<tr', '/').'.*?'.preg_quote('>', '/').'(.*?)'.preg_quote('</tr>', '/').'/s', $html, $matches);
-		$tables = []; $matches = $matches[1]; array_shift($matches);
-		foreach ($matches as $value)
+		if (!$result->wasSuccessful())
 		{
-			preg_match('/<a href=".*?">(.*?)<\/a>/', $value, $submatch);
-			if (isset($submatch[1])) $tables[] = $submatch[1];
+			throw new RuntimeException('Failed to get list of tabels!');
 		}
+
+		$tables = $result->getTask()->getTables();
 
 		// Get sql dump
 		$this->printTaskInfo('Downloading sql dump.');
-		$sql = $http->post('export.php',
+		$sql = $this->loggedIn->getClient()->post('export.php',
 		[
-			'body' =>
+			'form_params' =>
 			[
 				'db' => $this->remoteDbName,
-				'server' => $server_id,
-				'token' => $token,
+				'server' => $this->loggedIn->getServerId(),
+				'token' => $this->loggedIn->getToken(),
 				'export_type' => 'database',
 				'export_method' => 'quick',
 				'quick_or_custom' => 'quick',
+				'template_id' => '',
 				'what' => 'sql',
+				'structure_or_data_forced' => 0,
 				'table_select' => $tables,
+				'table_structure' => $tables,
+				'table_data' => $tables,
 				'output_format' => 'sendit',
 				'filename_template' => '@DATABASE@',
 				'remember_template' => 'on',
 				'charset_of_file' => 'utf-8',
 				'compression' => 'none',
+				'maxsize' => '',
 				'sql_include_comments' => 'something',
 				'sql_header_comment' => '',
 				'sql_compatibility' => 'NONE',
 				'sql_structure_or_data' => 'structure_and_data',
 				'sql_create_table' => 'something',
+				'sql_auto_increment' => 'something',
 				'sql_create_view' => 'something',
 				'sql_procedure_function' => 'something',
 				'sql_create_trigger' => 'something',
-				'sql_create_table_statements' => 'something',
-				'sql_if_not_exists' => 'something',
-				'sql_auto_increment' => 'something',
 				'sql_backquotes' => 'something',
 				'sql_type' => 'INSERT',
 				'sql_insert_syntax' => 'both',
 				'sql_max_query_size' => '50000',
-				'sql_hex_for_blob' => 'something',
+				'sql_hex_for_binary' => 'something',
 				'sql_utc_time' => 'something'
 			]
 		])->getBody();
@@ -185,6 +169,6 @@ class PullDbViaPhpMyAdminTask extends \Robo\Task\BaseTask
 		}
 
 		// If we get to here assume everything worked
-		return \Robo\Result::success($this);
+		return Result::success($this);
 	}
 }

@@ -6,9 +6,9 @@ use Robo\Runner as RoboRunner;
 use Symfony\Component\Console\Output\ConsoleOutput;
 
 /**
- * Class: Runner
- * =============================================================================
  * A custom runner that does not go looking for an actual "RoboFile.php"
+ *
+ * @see https://github.com/Codegyre/Robo/pull/242
  *
  * Example Usage:
  * -----------------------------------------------------------------------------

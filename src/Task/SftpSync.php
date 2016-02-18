@@ -1,7 +1,10 @@
 <?php namespace Brads\Robo\Task;
 
-use Net_SFTP;
-use Crypt_RSA;
+use Robo\Result;
+use Robo\Task\BaseTask;
+use Robo\Common\DynamicParams;
+use phpseclib\Net\SFTP;
+use phpseclib\Crypt\RSA;
 
 /*
  * NOTE: The exact same thing could be done with FTP,
@@ -16,35 +19,47 @@ trait SftpSync
 	}
 }
 
-class SftpSyncTask extends \Robo\Task\BaseTask
+class SftpSyncTask extends BaseTask
 {
-	use \Robo\Common\DynamicParams;
+	use DynamicParams;
 
-	// If true we will only tell you what would has changed.
+	/** @var boolean */
 	private $dryRun = false;
 
-	// The sftp details
+	/** @var string */
 	private $sftpHost;
+
+	/** @var string */
 	private $sftpUser;
+
+	/** @var string */
 	private $sftpPass;
+
+	/** @var string */
 	private $sftpKey;
 
-	// Some paths
+	/** @var string */
 	private $localPath;
+
+	/** @var string */
 	private $remotePath;
 
-	// The http host used to make the http
-	// request to get the remote file checksums
+	/** @var string */
 	private $httpHost;
 
-	// Some files/folders to ignore
+	/** @var array */
 	private $ignore =
 	[
 		'./sftp-upload-helper.php',
 		'./disabled.htaccess'
 	];
 
-	// Setter for the ignore property
+	/**
+	 * Setter for the ignore property
+	 *
+	 * @param  array $value
+	 * @return SftpSyncTask
+	 */
 	public function ignore($value)
 	{
 		$this->ignore = array_merge($this->ignore, $value);
@@ -52,17 +67,9 @@ class SftpSyncTask extends \Robo\Task\BaseTask
 	}
 
 	/**
-	 * Method: run
-	 * =========================================================================
-	 * The main run method.
-	 * 
-	 * Parameters:
-	 * -------------------------------------------------------------------------
-	 * n/a
-	 * 
-	 * Returns:
-	 * -------------------------------------------------------------------------
-	 * Robo\Result
+	 * Executes the SftpSync Task.
+	 *
+	 * @return Robo\Result
 	 */
 	public function run()
 	{
@@ -81,16 +88,16 @@ class SftpSyncTask extends \Robo\Task\BaseTask
 		);
 
 		// Intialise our sftp connection
-		$sftp = new Net_SFTP($this->sftpHost);
+		$sftp = new SFTP($this->sftpHost);
 
 		// Do we use password or a key
 		if (file_exists($this->sftpKey) && empty($this->sshPass))
 		{
-			$key = new Crypt_RSA();
+			$key = new RSA();
 			$key->loadKey(file_get_contents($this->sshKey));
 			if (!$sftp->login($this->sshUser, $key))
 			{
-				return \Robo\Result::error
+				return Result::error
 				(
 					$this,
 					'Failed to login via SFTP using Key Based Auth.'
@@ -101,7 +108,7 @@ class SftpSyncTask extends \Robo\Task\BaseTask
 		{
 			if (!$sftp->login($this->sftpUser, $this->sftpPass))
 			{
-				return \Robo\Result::error
+				return Result::error
 				(
 					$this,
 					'Failed to login via SFTP using Password Based Auth.'
@@ -116,7 +123,7 @@ class SftpSyncTask extends \Robo\Task\BaseTask
 			$this->printTaskInfo('Renaming .htaccess file');
 			if (!$sftp->rename($this->remotePath.'/.htaccess', $this->remotePath.'/disabled.htaccess'))
 			{
-				return \Robo\Result::error($this, 'Failed to rename .htaccess file');
+				return Result::error($this, 'Failed to rename .htaccess file');
 			}
 		}
 
@@ -124,7 +131,7 @@ class SftpSyncTask extends \Robo\Task\BaseTask
 		$this->printTaskInfo('Uploading sftp helper script.');
 		if (!$sftp->put($this->remotePath.'/sftp-upload-helper.php', $this->sftp_upload_helper()))
 		{
-			return \Robo\Result::error($this, 'UPLOAD OF HELPER SCRIPT FAILED');
+			return Result::error($this, 'UPLOAD OF HELPER SCRIPT FAILED');
 		}
 
 		// Get the local and remote file arrays
@@ -136,7 +143,7 @@ class SftpSyncTask extends \Robo\Task\BaseTask
 		$this->printTaskInfo('Deleting sftp helper script.');
 		if (!$sftp->delete($this->remotePath.'/sftp-upload-helper.php'))
 		{
-			return \Robo\Result::error($this, 'FAILED TO DELETE HELPER SCRIPT');
+			return Result::error($this, 'FAILED TO DELETE HELPER SCRIPT');
 		}
 
 		// Rename htaccess file back
@@ -146,7 +153,7 @@ class SftpSyncTask extends \Robo\Task\BaseTask
 			$this->printTaskInfo('Renaming .htaccess file back to original');
 			if (!$sftp->rename($this->remotePath.'/disabled.htaccess', $this->remotePath.'/.htaccess'))
 			{
-				return \Robo\Result::error($this, 'Failed to rename .htaccess file back to original. OH SNAP... better fix this ASAP!');
+				return Result::error($this, 'Failed to rename .htaccess file back to original. OH SNAP... better fix this ASAP!');
 			}
 		}
 
@@ -282,7 +289,7 @@ class SftpSyncTask extends \Robo\Task\BaseTask
 
 				if (!$sftp->mkdir($remotepath))
 				{
-					return \Robo\Result::error($this, 'FAILED TO CREATE FOLDER: '.$remotepath);
+					return Result::error($this, 'FAILED TO CREATE FOLDER: '.$remotepath);
 				}
 
 				$this->printTaskInfo('Folder Created: '.$file);
@@ -294,12 +301,12 @@ class SftpSyncTask extends \Robo\Task\BaseTask
 				$this->printTaskInfo('Uploading: '.$file);
 
 				$localpath = str_replace('//', '/', $this->localPath.substr($file, 1));
-				
+
 				$remotepath = str_replace('//', '/', $this->remotePath.substr($file, 1));
 
 				if (!$sftp->put($remotepath, $localpath, NET_SFTP_LOCAL_FILE))
 				{
-					return \Robo\Result::error($this, 'FAILED TO UPLOAD FILE: '.$file);
+					return Result::error($this, 'FAILED TO UPLOAD FILE: '.$file);
 				}
 			}
 
@@ -326,12 +333,12 @@ class SftpSyncTask extends \Robo\Task\BaseTask
 			foreach ($files_to_delete as $file)
 			{
 				$remotepath = str_replace('//', '/', $this->remotePath.substr($file, 1));
-				
+
 				if ($delete_all)
 				{
 					if (!$sftp->delete($remotepath))
 					{
-						return \Robo\Result::error($this, 'FAILED TO DELETE FILE: '.$file);
+						return Result::error($this, 'FAILED TO DELETE FILE: '.$file);
 					}
 					else
 					{
@@ -350,7 +357,7 @@ class SftpSyncTask extends \Robo\Task\BaseTask
 					{
 						if (!$sftp->delete($remotepath))
 						{
-							return \Robo\Result::error($this, 'FAILED TO DELETE FILE: '.$file);
+							return Result::error($this, 'FAILED TO DELETE FILE: '.$file);
 						}
 
 						$this->printTaskInfo('Deleted: '.$file);
@@ -380,14 +387,14 @@ class SftpSyncTask extends \Robo\Task\BaseTask
 			foreach ($folders_to_delete as $file)
 			{
 				$remotepath = str_replace('//', '/', $this->remotePath.substr($file, 1));
-				
+
 				if ($delete_all_folders)
 				{
 					if (!$sftp->rmdir($remotepath))
 					{
-						return \Robo\Result::error($this, 'FAILED TO DELETE FOLDER: '.$file);
+						return Result::error($this, 'FAILED TO DELETE FOLDER: '.$file);
 					}
-					
+
 					$this->printTaskInfo('Deleted Folder: '.$file);
 				}
 				else
@@ -402,9 +409,9 @@ class SftpSyncTask extends \Robo\Task\BaseTask
 					{
 						if (!$sftp->rmdir($remotepath))
 						{
-							return \Robo\Result::error($this, 'FAILED TO DELETE FOLDER: '.$file);
+							return Result::error($this, 'FAILED TO DELETE FOLDER: '.$file);
 						}
-						
+
 						$this->printTaskInfo('Deleted Folder: '.$file);
 					}
 				}
@@ -428,7 +435,7 @@ class SftpSyncTask extends \Robo\Task\BaseTask
 		}
 
 		// If we get to here we assume everything worked
-		return \Robo\Result::success($this);
+		return Result::success($this);
 	}
 
 	/**
@@ -436,11 +443,11 @@ class SftpSyncTask extends \Robo\Task\BaseTask
 	 * =========================================================================
 	 * This simply creates the contents for our helper script
 	 * that we upload to the remote server.
-	 * 
+	 *
 	 * Parameters:
 	 * -------------------------------------------------------------------------
 	 * n/a
-	 * 
+	 *
 	 * Returns:
 	 * -------------------------------------------------------------------------
 	 * string
@@ -484,11 +491,11 @@ class SftpSyncTask extends \Robo\Task\BaseTask
 	 * =========================================================================
 	 * This generates a random string basically.
 	 * The token is set to $this->token
-	 * 
+	 *
 	 * Parameters:
 	 * -------------------------------------------------------------------------
 	 * n/a
-	 * 
+	 *
 	 * Returns:
 	 * -------------------------------------------------------------------------
 	 * void
@@ -502,11 +509,11 @@ class SftpSyncTask extends \Robo\Task\BaseTask
 	 * Method: get_local_file_hashes
 	 * =========================================================================
 	 * This is the local equivalent of the helper script we upload.
-	 * 
+	 *
 	 * Parameters:
 	 * -------------------------------------------------------------------------
 	 * $path - The path to start in
-	 * 
+	 *
 	 * Returns:
 	 * -------------------------------------------------------------------------
 	 * array
@@ -514,7 +521,7 @@ class SftpSyncTask extends \Robo\Task\BaseTask
 	private function get_local_file_hashes($path)
 	{
 		$files = [];
-		
+
 		foreach(new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($path, \FilesystemIterator::SKIP_DOTS), \RecursiveIteratorIterator::SELF_FIRST) as $name => $object)
 		{
 			if (strpos($name, ".git") === false)
@@ -537,20 +544,20 @@ class SftpSyncTask extends \Robo\Task\BaseTask
 	 * Method: get_remote_files
 	 * =========================================================================
 	 * This uses giuzzle to call the sftp helper script.
-	 * 
+	 *
 	 * Parameters:
 	 * -------------------------------------------------------------------------
 	 * n/a
-	 * 
+	 *
 	 * Returns:
 	 * -------------------------------------------------------------------------
 	 * array
 	 */
 	private function get_remote_files()
 	{
-		$client = new \GuzzleHttp\Client(['base_url' => 'http://'.$this->httpHost]);
+		$client = new \GuzzleHttp\Client(['base_uri' => 'http://'.$this->httpHost]);
 
-		$results = $client->get('/sftp-upload-helper.php', ['query' => ['token' => $this->token]])->json();
+		$results = json_decode($client->get('/sftp-upload-helper.php', ['query' => ['token' => $this->token]])->getBody());
 
 		$new = [];
 		foreach ($results as $key => $value)

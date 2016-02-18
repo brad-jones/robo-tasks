@@ -36,6 +36,13 @@ class BradsRoboTest extends PHPUnit_Framework_TestCase
 		$this->assertEquals('varchar(255)', $results[1][1]);
 	}
 
+	public function testExecuteSqlViaPhpMyAdminShouldFail()
+	{
+		$results = $this->callRoboTask('test:execute-sql-via-php-my-admin-bogus');
+
+		$this->assertNotEmpty($results['stderr']);
+	}
+
 	public function testImportSqlDump()
 	{
 		$results = $this->callRoboTask('test:import-sql-dump');

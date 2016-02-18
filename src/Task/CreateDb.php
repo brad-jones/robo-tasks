@@ -2,6 +2,9 @@
 
 use mysqli;
 use RuntimeException;
+use Robo\Result;
+use Robo\Task\BaseTask;
+use Robo\Common\DynamicParams;
 
 trait CreateDb
 {
@@ -11,26 +14,29 @@ trait CreateDb
 	}
 }
 
-class CreateDbTask extends \Robo\Task\BaseTask
+class CreateDbTask extends BaseTask
 {
-	use \Robo\Common\DynamicParams;
+	use DynamicParams;
 
-	// The database details
+	/** @var string */
 	private $host = 'localhost';
+
+	/** @var string */
 	private $user = 'root';
+
+	/** @var string */
 	private $pass = '';
+
+	/** @var string */
 	private $name;
 
-	// Do we want to drop any existing tables
+	/** @var boolean */
 	private $dropTables = false;
 
 	/**
-	 * Method: run
-	 * =========================================================================
-	 * The main run method.
-	 * 
+	 * Executes the CreateDb Task.
+	 *
 	 * Example usage:
-	 * 
 	 * ```php
 	 * $this->taskCreateDb()
 	 * 		->host('my.db.host')
@@ -39,14 +45,8 @@ class CreateDbTask extends \Robo\Task\BaseTask
 	 * 		->name('the_db_to_create')
 	 * ->run();
 	 * ```
-	 * 
-	 * Parameters:
-	 * -------------------------------------------------------------------------
-	 * n/a
-	 * 
-	 * Returns:
-	 * -------------------------------------------------------------------------
-	 * Robo\Result
+	 *
+	 * @return Robo\Result
 	 */
 	public function run()
 	{
@@ -136,6 +136,6 @@ class CreateDbTask extends \Robo\Task\BaseTask
 		}
 
 		// If we get to here assume everything worked
-		return \Robo\Result::success($this);
+		return Result::success($this);
 	}
 }

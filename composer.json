@@ -19,19 +19,19 @@
 	"require":
 	{
 		"codegyre/robo": "^0.6.0",
-		"guzzlehttp/guzzle": "~6.0",
-		"gears/string": "*",
-		"gears/asset": "*"
+		"guzzlehttp/guzzle": "^6.0",
+		"athari/yalinqo": "^2.4",
+		"danielstjules/stringy": "^2.2"
 	},
 	"require-dev":
 	{
-		"phpunit/phpunit": "4.3.*",
-		"symfony/finder": "*",
-		"wp-cli/wp-cli": "*",
+		"symfony/finder": "^2.0|^3.0",
+		"wp-cli/wp-cli": "^0.22.0",
 		"jeremeamia/superclosure": "^2.0",
 		"interconnectit/search-replace-db": "^3.0",
-		"phpseclib/phpseclib": "*",
-		"phpmyadmin/phpmyadmin": "*"
+		"phpunit/phpunit": "^5.2",
+		"phpmyadmin/phpmyadmin": "^4.5",
+		"phpseclib/phpseclib": "^2.0"
 	},
 	"suggest":
 	{
