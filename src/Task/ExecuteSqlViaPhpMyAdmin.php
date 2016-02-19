@@ -7,7 +7,7 @@ use Robo\Task\Base\loadTasks;
 use Robo\Common\DynamicParams;
 use GuzzleHttp\Client as Http;
 use GuzzleHttp\TransferStats;
-use function Stringy\create as s;
+use Stringy\Stringy as s;
 use Brads\Robo\Shared\PhpMyAdminLogin;
 use Brads\Robo\Shared\PhpMyAdminLoginTask;
 
@@ -136,7 +136,7 @@ class ExecuteSqlViaPhpMyAdminTask extends BaseTask
 	 */
 	private function confirmSuccessfulImport($html)
 	{
-		$html = s($html);
+		$html = s::create($html);
 
 		if ($html->contains('Your SQL query has been executed successfully'))
 		{

@@ -7,7 +7,7 @@ use Robo\Task\Base\loadTasks;
 use Robo\Common\DynamicParams;
 use GuzzleHttp\Client as Http;
 use GuzzleHttp\TransferStats;
-use function Stringy\create as s;
+use Stringy\Stringy as s;
 
 trait PhpMyAdminLogin
 {
@@ -145,7 +145,7 @@ class PhpMyAdminLoginTask extends BaseTask
 		]);
 
 		// Check to see if we passed auth
-		if (!s($effectiveUri)->contains($this->token))
+		if (!s::create($effectiveUri)->contains($this->token))
 		{
 			throw new RuntimeException('phpMyAdmin Login Failed');
 		}

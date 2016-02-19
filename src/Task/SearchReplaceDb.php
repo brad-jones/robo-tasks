@@ -3,7 +3,7 @@
 use Robo\Result;
 use Robo\Task\BaseTask;
 use Robo\Common\DynamicParams;
-use function Stringy\create as s;
+use Stringy\Stringy as s;
 
 trait SearchReplaceDb
 {
@@ -146,8 +146,8 @@ class SearchReplaceDbTask extends BaseTask
 
 		// Remove the strict standard error
 		$regx = '/(PHP\s)?Strict Standards:\s+Declaration of icit_srdb_cli::log.*?\d+/';
-		$output['stdout'] = trim(s($output['stdout'])->regexReplace($regx, ''));
-		$output['stderr'] = trim(s($output['stderr'])->regexReplace($regx, ''));
+		$output['stdout'] = trim(s::create($output['stdout'])->regexReplace($regx, ''));
+		$output['stderr'] = trim(s::create($output['stderr'])->regexReplace($regx, ''));
 
 		// Check for errors
 		if (!empty($output['stderr']))

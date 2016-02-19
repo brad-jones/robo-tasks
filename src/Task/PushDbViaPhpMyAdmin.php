@@ -7,7 +7,7 @@ use Robo\Task\Base\loadTasks;
 use Robo\Common\DynamicParams;
 use GuzzleHttp\Client as Http;
 use GuzzleHttp\TransferStats;
-use function Stringy\create as s;
+use Stringy\Stringy as s;
 use Brads\Robo\Task\ExecuteSQLViaPhpMyAdmin;
 use Brads\Robo\Shared\PhpMyAdminLogin;
 use Brads\Robo\Shared\PhpMyAdminLoginTask;
@@ -232,7 +232,7 @@ class PushDbViaPhpMyAdminTask extends BaseTask
 		])->getBody();
 
 		// Check that it worked
-		if (!s($response)->contains('Import has been successfully finished'))
+		if (!s::create($response)->contains('Import has been successfully finished'))
 		{
 			throw new RuntimeException('Failed to import dump via phpmyadmin. OH NO - we just dropped all the tables!!!');
 		}

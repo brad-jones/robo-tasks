@@ -8,7 +8,6 @@ use Robo\Common\DynamicParams;
 use Brads\Robo\Task\ImportSqlDump;
 use GuzzleHttp\Client as Http;
 use GuzzleHttp\TransferStats;
-use function Stringy\create as s;
 use Brads\Robo\Shared\PhpMyAdminLogin;
 use Brads\Robo\Shared\PhpMyAdminLoginTask;
 use Brads\Robo\Shared\PhpMyAdminListTables;
