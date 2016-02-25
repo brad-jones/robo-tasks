@@ -111,7 +111,7 @@ class PushDbViaPhpMyAdminTask extends BaseTask
 		}
 
 		// Compress the dump
-		$this->printTaskInfo('Compressing dump on local server - <info>'.$cmd.'</info>');
+		$this->printTaskInfo('Compressing dump on local server');
 		if ($fp_out = gzopen($dump_name.'.gz', 'wb9'))
 		{
 			if ($fp_in = fopen($dump_name, 'rb'))
