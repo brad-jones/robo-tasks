@@ -18,7 +18,8 @@
 	},
 	"require":
 	{
-		"codegyre/robo": "^0.6.0",
+		"codegyre/robo": "^0.6.0|^0.7.0",
+		"brad-jones/robo-runner": "^0.0.2",
 		"guzzlehttp/guzzle": "^6.0",
 		"danielstjules/stringy": "^2.2"
 	},
@@ -29,7 +30,7 @@
 		"jeremeamia/superclosure": "^2.0",
 		"interconnectit/search-replace-db": "^3.0",
 		"phpunit/phpunit": "^4.8",
-		"phpmyadmin/phpmyadmin": "^4.5",
+		"phpmyadmin/phpmyadmin": "4.5.4.*",
 		"phpseclib/phpseclib": "^2.0"
 	},
 	"suggest":
