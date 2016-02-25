@@ -2,8 +2,12 @@
 
 use Closure;
 use RuntimeException;
+use Robo\Result;
+use Robo\Task\BaseTask;
+use Robo\Common\DynamicParams;
 use SuperClosure\Serializer;
 use SuperClosure\Analyzer\TokenAnalyzer;
+use SuperClosure\SerializableClosure;
 
 trait WordpressSandbox
 {
@@ -13,36 +17,28 @@ trait WordpressSandbox
 	}
 }
 
-class WordpressSandboxTask extends \Robo\Task\BaseTask
+class WordpressSandboxTask extends BaseTask
 {
-	use \Robo\Common\DynamicParams;
+	use DynamicParams;
 
 	private $closure;
 
 	public function __construct(Closure $closure)
 	{
 		// Unbind the closure from the robofile class
-		$this->closure = $closure->bindTo(null);
+		// NOT sure WTF is going on with the bindTo business, cause this use to
+		// work. Anyway it looks like this guy might be worth a look at some
+		// point: http://www.opis.io/closure
+		$this->closure = $closure; //$closure->bindTo(null);
 	}
 
-	/**
-	 * Method: run
-	 * =========================================================================
-	 * The main run method.
-	 * 
-	 * Parameters:
-	 * -------------------------------------------------------------------------
-	 * n/a
-	 * 
-	 * Returns:
-	 * -------------------------------------------------------------------------
-	 * mixed
-	 */
 	public function run()
 	{
 		// Serialize the closure.
 		$serializer = new Serializer(new TokenAnalyzer);
-		$serialized = $serializer->serialize($this->closure);
+		$serializableClosure = new SerializableClosure($this->closure, $serializer);
+		$serializableClosure->bindTo(null);
+		$serialized = serialize($serializableClosure); //$serializer->serialize($this->closure);
 
 		// Create some cross platform temp filenames
 		$temp_serialized_file = tempnam(sys_get_temp_dir(), 'wpSandBoxSerialized');

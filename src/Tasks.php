@@ -2,7 +2,6 @@
 
 class Tasks extends \Robo\Tasks
 {
-	use \Gears\Asset;
 	use Task\CreateDb;
 	use Task\ExecuteSqlViaPhpMyAdmin;
 	use Task\ImportSqlDump;
@@ -13,21 +12,25 @@ class Tasks extends \Robo\Tasks
 	use Task\SftpSync;
 	use Task\SearchReplaceDb;
 	use Task\WordpressSandbox;
-	
+
+	/**
+	 * Asks a simple Yes or No Question.
+	 *
+	 * @param  string  $question The question to ask.
+	 * @return boolean           true for yes, false for no.
+	 */
 	protected function askYesNo($question)
 	{
-		$answer = $this->askWithForcedAnswers($question, ['yes', 'no']);
-
-		if ($answer == 'yes')
-		{
-			return true;
-		}
-		else
-		{
-			return false;
-		}
+		return $this->confirm($question) === 'y' ? true : false;
 	}
 
+	/**
+	 * Asks a question that must provide an answer from a specfic set of answers
+	 *
+	 * @param  string $question The question to ask.
+	 * @param  array  $answers  A set of possible answers.
+	 * @return string           The provided answer.
+	 */
 	protected function askWithForcedAnswers($question, $answers)
 	{
 		// Ask the question

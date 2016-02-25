@@ -1,7 +1,13 @@
 <?php namespace Brads\Robo\Task;
 
 use RuntimeException;
+use Robo\Result;
+use Robo\Task\BaseTask;
 use Robo\Task\FileSystem;
+use Robo\Common\DynamicParams;
+use Robo\Task\Base\loadTasks as BaseTasks;
+use Robo\Task\FileSystem\loadTasks as FileTasks;
+use Brads\Robo\Task\CreateDb;
 
 trait ImportSqlDump
 {
@@ -11,34 +17,29 @@ trait ImportSqlDump
 	}
 }
 
-class ImportSqlDumpTask extends \Robo\Task\BaseTask
+class ImportSqlDumpTask extends BaseTask
 {
-	use \Robo\Task\Base\loadTasks;
-	use \Robo\Task\FileSystem\loadTasks;
-	use \Brads\Robo\Task\CreateDb;
-	use \Robo\Common\DynamicParams;
+	use BaseTasks, FileTasks, CreateDb, DynamicParams;
 
-	// The database details
+	/** @var string */
 	private $host = 'localhost';
+
+	/** @var string */
 	private $user = 'root';
+
+	/** @var string */
 	private $pass = '';
+
+	/** @var string */
 	private $name;
 
-	// The location of the dump to import
+	/** @var string */
 	private $dump;
 
 	/**
-	 * Method: __construct
-	 * =========================================================================
 	 * This sets the location of the sql dump.
-	 * 
-	 * Parameters:
-	 * -------------------------------------------------------------------------
-	 * $query - The sql dump to import.
-	 * 
-	 * Returns:
-	 * -------------------------------------------------------------------------
-	 * void
+	 *
+	 * @param string $dump The sql dump to import.
 	 */
 	public function __construct($dump)
 	{
@@ -46,17 +47,9 @@ class ImportSqlDumpTask extends \Robo\Task\BaseTask
 	}
 
 	/**
-	 * Method: run
-	 * =========================================================================
-	 * The main run method.
-	 * 
-	 * Parameters:
-	 * -------------------------------------------------------------------------
-	 * n/a
-	 * 
-	 * Returns:
-	 * -------------------------------------------------------------------------
-	 * Robo\Result
+	 * Executes the ImportSqlDump Task.
+	 *
+	 * @return Robo\Result
 	 */
 	public function run()
 	{
@@ -80,15 +73,15 @@ class ImportSqlDumpTask extends \Robo\Task\BaseTask
 
 			// Decompress the dump file
 			if ($fp_out = fopen($temp_dump, 'wb'))
-			{ 
+			{
 				if ($fp_in = gzopen($this->dump, 'rb'))
-				{ 
+				{
 					while (!gzeof($fp_in))
 					{
 						fwrite($fp_out, gzread($fp_in, 1024 * 512));
 					}
 
-					fclose($fp_in); 
+					fclose($fp_in);
 				}
 				else
 				{
@@ -98,7 +91,7 @@ class ImportSqlDumpTask extends \Robo\Task\BaseTask
 					);
 				}
 
-				gzclose($fp_out); 
+				gzclose($fp_out);
 			}
 			else
 			{
@@ -141,6 +134,6 @@ class ImportSqlDumpTask extends \Robo\Task\BaseTask
 		}
 
 		// If we get to here assume everything worked
-		return \Robo\Result::success($this);
+		return Result::success($this);
 	}
 }

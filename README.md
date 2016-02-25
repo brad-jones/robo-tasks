@@ -18,7 +18,7 @@ How to Use:
 --------------------------------------------------------------------------------
 First up run the following:
 
-    composer require brad-jones/robo-tasks:*
+    composer require brad-jones/robo-tasks
 
 Assuming you already have *robo* installed, and you have a ```RoboFile.php```.
 

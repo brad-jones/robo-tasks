@@ -1,109 +1,105 @@
 <?php namespace Brads\Robo\Task;
 
 use RuntimeException;
-use Gears\String as Str;
-use GuzzleHttp\Client as Guzzle;
+use Robo\Result;
+use Robo\Task\BaseTask;
+use Robo\Task\Base\loadTasks;
+use Robo\Common\DynamicParams;
+use GuzzleHttp\Client as Http;
+use GuzzleHttp\TransferStats;
+use Stringy\Stringy as s;
+use Brads\Robo\Task\ExecuteSQLViaPhpMyAdmin;
+use Brads\Robo\Shared\PhpMyAdminLogin;
+use Brads\Robo\Shared\PhpMyAdminLoginTask;
+use Brads\Robo\Shared\PhpMyAdminListTables;
 
 trait PushDbViaPhpMyAdmin
 {
-	protected function taskPushDbViaPhpMyAdmin()
+	protected function taskPushDbViaPhpMyAdmin(PhpMyAdminLoginTask $loggedIn = null)
 	{
-		return new PushDbViaPhpMyAdminTask();
+		return new PushDbViaPhpMyAdminTask($loggedIn);
 	}
 }
 
-class PushDbViaPhpMyAdminTask extends \Robo\Task\BaseTask
+class PushDbViaPhpMyAdminTask extends BaseTask
 {
-	use \Robo\Task\Base\loadTasks;
-	use \Robo\Common\DynamicParams;
+	use loadTasks, DynamicParams, PhpMyAdminLogin,
+	PhpMyAdminListTables, ExecuteSQLViaPhpMyAdmin;
 
-	// The PhpMyAdmin details
+	/** @var string */
 	private $phpMyAdminUrl;
+
+	/** @var string */
 	private $phpMyAdminUser;
+
+	/** @var string */
 	private $phpMyAdminPass;
 
-	// The remote db details
+	/** @var string */
 	private $remoteDbHost;
+
+	/** @var string */
 	private $remoteDbName;
 
-	// The local db details
+	/** @var string */
 	private $localDbHost = 'localhost';
+
+	/** @var string */
 	private $localDbUser = 'root';
-	private $localDbPass;
+
+	/** @var string */
+	private $localDbPass = 'root';
+
+	/** @var string */
 	private $localDbName;
 
+	/** @var PhpMyAdminLoginTask */
+    private $loggedIn;
+
 	/**
-	 * Method: run
-	 * =========================================================================
-	 * The main run method.
-	 * 
-	 * Parameters:
-	 * -------------------------------------------------------------------------
-	 * n/a
-	 * 
-	 * Returns:
-	 * -------------------------------------------------------------------------
-	 * Robo\Result
+	 * @param PhpMyAdminLoginTask $loggedIn An already logged in task.
+	 */
+	public function __construct(PhpMyAdminLoginTask $loggedIn = null)
+	{
+		$this->loggedIn = $loggedIn;
+	}
+
+	/**
+	 * Executes the PushDbViaPhpMyAdmin Task.
+	 *
+	 * @return Robo\Result
 	 */
 	public function run()
 	{
-		// Setup guzzle client
-		$http = new Guzzle
-		([
-			'base_url' => $this->phpMyAdminUrl,
-			'defaults' =>
-			[
-				'cookies' => true,
-				'verify' => false
-			]
-		]);
-
-		// Tell the world whats happening
-		$this->printTaskInfo
-		(
-			'Logging into phpmyadmin - <info>'.
-			str_replace
-			(
-				'://',
-				'://'.$this->phpMyAdminUser.':'.$this->phpMyAdminPass.'@',
-				$this->phpMyAdminUrl
-			).'</info>'
-		);
-
-		// Make an intial request so we can extract some info
-		$html = $http->get()->getBody();
-
-		// Grab the token
-		preg_match('#<input type="hidden" name="token" value="(.*?)" />#s', $html, $matches);
-		$token = $matches[1];
-
-		// Get the server id
-		preg_match('#<option value="(\d+)".*?>'.preg_quote($this->remoteDbHost, '#').'.*?</option>#', $html, $matches);
-		$server_id = $matches[1];
-
-		// Login - session saved to cookie by guzzle
-		$response = $http->post(null,
-		[
-			'body' =>
-			[
-				'pma_username' => $this->phpMyAdminUser,
-				'pma_password' => $this->phpMyAdminPass,
-				'server' => $server_id,
-				'token' => $token
-			]
-		]);
-
-		// Check to see if we passed auth
-		if (!Str::contains($response->getEffectiveUrl(), $token))
+		// First lets login to the phpMyAdmin Server, if not already.
+		if ($this->loggedIn == null)
 		{
-			throw new RuntimeException('phpMyAdmin Login Failed');
+			$result = $this->taskPhpMyAdminLogin()
+				->phpMyAdminUrl($this->phpMyAdminUrl)
+				->phpMyAdminUser($this->phpMyAdminUser)
+				->phpMyAdminPass($this->phpMyAdminPass)
+				->remoteDbHost($this->remoteDbHost)
+			->run();
+
+			if (!$result->wasSuccessful())
+			{
+				throw new RuntimeException('Failed to Login!');
+			}
+
+			$this->loggedIn = $result->getTask();
 		}
 
 		// Create our dump filename
 		$dump_name = tempnam(sys_get_temp_dir(), 'dump');
 
 		// Create our dump locally
-		$cmd = 'mysqldump -h'.$this->localDbHost.' -u'.$this->localDbUser.' '.(empty($this->localDbPass) ? '' : '-p'.$this->localDbPass).' '.$this->localDbName.' > '.$dump_name;
+		$cmd = 'mysqldump '.
+			'-h'.$this->localDbHost.
+			' -u'.$this->localDbUser.
+			' '.(empty($this->localDbPass) ? '' : '-p'.$this->localDbPass).
+			' '.$this->localDbName.' > '.$dump_name
+		;
+
 		$this->printTaskInfo('Dumping db on local server - <info>'.$cmd.'</info>');
 		if (!$this->taskExec($cmd)->run()->wasSuccessful())
 		{
@@ -117,15 +113,15 @@ class PushDbViaPhpMyAdminTask extends \Robo\Task\BaseTask
 		// Compress the dump
 		$this->printTaskInfo('Compressing dump on local server - <info>'.$cmd.'</info>');
 		if ($fp_out = gzopen($dump_name.'.gz', 'wb9'))
-		{ 
+		{
 			if ($fp_in = fopen($dump_name, 'rb'))
-			{ 
+			{
 				while (!feof($fp_in))
 				{
 					gzwrite($fp_out, fread($fp_in, 1024 * 512));
 				}
 
-				fclose($fp_in); 
+				fclose($fp_in);
 			}
 			else
 			{
@@ -135,7 +131,7 @@ class PushDbViaPhpMyAdminTask extends \Robo\Task\BaseTask
 				);
 			}
 
-			gzclose($fp_out); 
+			gzclose($fp_out);
 		}
 		else
 		{
@@ -145,25 +141,17 @@ class PushDbViaPhpMyAdminTask extends \Robo\Task\BaseTask
 			);
 		}
 
-		// Grab a list of tables
-		$this->printTaskInfo('Getting list of tables.');
-		$html = $http->get('db_structure.php',
-		[
-			'query' =>
-			[
-				'db' => $this->remoteDbName,
-				'server' => $server_id,
-				'token' => $token
-			]
-		])->getBody();
+		// Get a list of tables from phpMyAdmin
+		$result = $this->taskPhpMyAdminListTables($this->loggedIn)
+			->remoteDbName($this->remoteDbName)
+		->run();
 
-		preg_match_all('/'.preg_quote('<tr', '/').'.*?'.preg_quote('>', '/').'(.*?)'.preg_quote('</tr>', '/').'/s', $html, $matches);
-		$tables = []; $matches = $matches[1]; array_shift($matches);
-		foreach ($matches as $value)
+		if (!$result->wasSuccessful())
 		{
-			preg_match('/<a href=".*?">(.*?)<\/a>/', $value, $submatch);
-			if (isset($submatch[1])) $tables[] = $submatch[1];
+			throw new RuntimeException('Failed to get list of tabels!');
 		}
+
+		$tables = $result->getTask()->getTables();
 
 		// Check to see if we have any tables
 		if (count($tables) > 0)
@@ -175,21 +163,12 @@ class PushDbViaPhpMyAdminTask extends \Robo\Task\BaseTask
 
 			// Droping the tables
 			$this->printTaskInfo('Droping tables from phpmyadmin.');
-			$response = $http->post('import.php',
-			[
-				'body' =>
-				[
-					'db' => $this->remoteDbName,
-					'server' => $server_id,
-					'token' => $token,
-					'sql_query' => $sql,
-					'sql_delimiter' => ';'
-
-				]
-			])->getBody();
+			$result = $this->taskExecuteSqlViaPhpMyAdmin($sql, $this->loggedIn)
+				->remoteDbName($this->remoteDbName)
+			->run();
 
 			// Check to make sure it worked
-			if (!Str::contains($response, 'Your SQL query has been executed successfully') && !Str::contains($response, 'Query took'))
+			if (!$result->wasSuccessful())
 			{
 				throw new RuntimeException('Failed to drop tables via phpmyadmin.');
 			}
@@ -197,28 +176,63 @@ class PushDbViaPhpMyAdminTask extends \Robo\Task\BaseTask
 
 		// Upload the dump
 		$this->printTaskInfo('Uploading sql dump.');
-		$response = $http->post('import.php',
+		$response = $this->loggedIn->getClient()->post('import.php',
 		[
-			'body' =>
+			'multipart' =>
 			[
-				'db' => $this->remoteDbName,
-				'server' => $server_id,
-				'token' => $token,
-				'import_type' => 'database',
-				'file_location' => 'on',
-				'import_file' => fopen($dump_name.'.gz', 'r'),
-				'MAX_FILE_SIZE' => '209715200',
-				'charset_of_file' => 'utf-8',
-				'allow_interrupt' => 'yes',
-				'skip_queries' => 0,
-				'format' => 'sql',
-				'sql_compatibility' => 'NONE',
-				'sql_no_auto_value_on_zero' => 'something'
+				[
+					'name' => 'db',
+					'contents' => $this->remoteDbName
+				],
+				[
+					'name' => 'server',
+					'contents' => $this->loggedIn->getServerId()
+				],
+				[
+					'name' => 'token',
+					'contents' => $this->loggedIn->getToken()
+				],
+				[
+					'name' => 'import_type',
+					'contents' => 'database'
+				],
+				[
+					'name' => 'file_location',
+					'contents' => 'on'
+				],
+				[
+					'name' => 'import_file',
+					'contents' => fopen($dump_name.'.gz', 'r')
+				],
+				[
+					'name' => 'charset_of_file',
+					'contents' => 'utf-8'
+				],
+				[
+					'name' => 'allow_interrupt',
+					'contents' => 'yes'
+				],
+				[
+					'name' => 'skip_queries',
+					'contents' => '0'
+				],
+				[
+					'name' => 'format',
+					'contents' => 'sql'
+				],
+				[
+					'name' => 'sql_compatibility',
+					'contents' => 'NONE'
+				],
+				[
+					'name' => 'sql_no_auto_value_on_zero',
+					'contents' => 'something'
+				]
 			]
 		])->getBody();
 
 		// Check that it worked
-		if (!Str::contains($response, 'Import has been successfully finished'))
+		if (!s::create($response)->contains('Import has been successfully finished'))
 		{
 			throw new RuntimeException('Failed to import dump via phpmyadmin. OH NO - we just dropped all the tables!!!');
 		}
@@ -228,6 +242,6 @@ class PushDbViaPhpMyAdminTask extends \Robo\Task\BaseTask
 		unlink($dump_name); unlink($dump_name.'.gz');
 
 		// If we get to here assume everything worked
-		return \Robo\Result::success($this);
+		return Result::success($this);
 	}
 }

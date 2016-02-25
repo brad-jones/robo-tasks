@@ -1,128 +1,106 @@
 <?php namespace Brads\Robo\Task;
 
 use RuntimeException;
-use Gears\String as Str;
-use GuzzleHttp\Client as Guzzle;
+use Robo\Result;
+use Robo\Task\BaseTask;
+use Robo\Task\Base\loadTasks;
+use Robo\Common\DynamicParams;
+use GuzzleHttp\Client as Http;
+use GuzzleHttp\TransferStats;
+use Stringy\Stringy as s;
+use Brads\Robo\Shared\PhpMyAdminLogin;
+use Brads\Robo\Shared\PhpMyAdminLoginTask;
 
 trait ExecuteSQLViaPhpMyAdmin
 {
-	protected function taskExecuteSqlViaPhpMyAdmin($query)
+	protected function taskExecuteSqlViaPhpMyAdmin($query, PhpMyAdminLoginTask $loggedIn = null)
 	{
-		return new ExecuteSqlViaPhpMyAdminTask($query);
+		return new ExecuteSqlViaPhpMyAdminTask($query, $loggedIn);
 	}
 }
 
-class ExecuteSqlViaPhpMyAdminTask extends \Robo\Task\BaseTask
+class ExecuteSqlViaPhpMyAdminTask extends BaseTask
 {
-	use \Robo\Task\Base\loadTasks;
-	use \Robo\Common\DynamicParams;
+	use loadTasks, DynamicParams, PhpMyAdminLogin;
 
-	// The PhpMyAdmin details
+	/** @var string */
 	private $phpMyAdminUrl;
+
+	/** @var string */
 	private $phpMyAdminUser;
+
+	/** @var string */
 	private $phpMyAdminPass;
 
-	// The remote db details
+	/** @var string */
 	private $remoteDbHost;
+
+	/** @var string */
 	private $remoteDbName;
 
-	// The query to run
+	/** @var string */
 	private $query;
 
+	/** @var PhpMyAdminLoginTask */
+    private $loggedIn;
+
 	/**
-	 * Method: __construct
-	 * =========================================================================
 	 * This sets our query property.
-	 * 
-	 * Parameters:
-	 * -------------------------------------------------------------------------
-	 * $query - The sql query to perform.
-	 * 
-	 * Returns:
-	 * -------------------------------------------------------------------------
-	 * void
+	 *
+	 * @param string              $query    The sql query to perform.
+	 * @param PhpMyAdminLoginTask $loggedIn An already logged in task.
 	 */
-	public function __construct($query)
+	public function __construct($query, PhpMyAdminLoginTask $loggedIn = null)
 	{
 		$this->query = $query;
+		$this->loggedIn = $loggedIn;
 	}
 
 	/**
-	 * Method: run
-	 * =========================================================================
-	 * The main run method.
-	 * 
-	 * Parameters:
-	 * -------------------------------------------------------------------------
-	 * n/a
-	 * 
-	 * Returns:
-	 * -------------------------------------------------------------------------
-	 * Robo\Result
+	 * Executes the ExecuteSqlViaPhpMyAdmin Task.
+	 *
+	 * Example usage:
+	 * ``php
+	 * 	$this->taskExecuteSqlViaPhpMyAdmin('sql goes here')
+	 * 		->phpMyAdminUrl('http://example.org/phpmyadmin/')
+	 * 		->phpMyAdminUser('...')
+	 * 		->phpMyAdminPass('...')
+	 * 		->remoteDbHost('localhost')
+	 * 		->remoteDbName('mydb')
+	 * 	->run();
+	 * ```
+	 *
+	 * @return Robo\Result
 	 */
 	public function run()
 	{
-		// Setup guzzle client
-		$http = new Guzzle
-		([
-			'base_url' => $this->phpMyAdminUrl,
-			'defaults' =>
-			[
-				'cookies' => true,
-				'verify' => false
-			]
-		]);
-
-		// Tell the world whats happening
-		$this->printTaskInfo
-		(
-			'Logging into phpmyadmin - <info>'.
-			str_replace
-			(
-				'://',
-				'://'.$this->phpMyAdminUser.':'.$this->phpMyAdminPass.'@',
-				$this->phpMyAdminUrl
-			).'</info>'
-		);
-
-		// Make an intial request so we can extract some info
-		$html = $http->get()->getBody();
-
-		// Grab the token
-		preg_match('#<input type="hidden" name="token" value="(.*?)" />#s', $html, $matches);
-		$token = $matches[1];
-
-		// Get the server id
-		preg_match('#<option value="(\d+)".*?>'.preg_quote($this->remoteDbHost, '#').'.*?</option>#', $html, $matches);
-		$server_id = $matches[1];
-
-		// Login - session saved to cookie by guzzle
-		$response = $http->post(null,
-		[
-			'body' =>
-			[
-				'pma_username' => $this->phpMyAdminUser,
-				'pma_password' => $this->phpMyAdminPass,
-				'server' => $server_id,
-				'token' => $token
-			]
-		]);
-
-		// Check to see if we passed auth
-		if (!Str::contains($response->getEffectiveUrl(), $token))
+		// First lets login to the phpMyAdmin Server, if not already.
+		if ($this->loggedIn == null)
 		{
-			throw new RuntimeException('phpMyAdmin Login Failed');
+			$result = $this->taskPhpMyAdminLogin()
+				->phpMyAdminUrl($this->phpMyAdminUrl)
+				->phpMyAdminUser($this->phpMyAdminUser)
+				->phpMyAdminPass($this->phpMyAdminPass)
+				->remoteDbHost($this->remoteDbHost)
+			->run();
+
+			if (!$result->wasSuccessful())
+			{
+				throw new RuntimeException('Failed to Login!');
+			}
+
+			$this->loggedIn = $result->getTask();
 		}
 
 		// Execute our sql
 		$this->printTaskInfo('Executing the query.');
-		$response = $http->post('import.php',
+		$response = $this->loggedIn->getClient()->post('import.php',
 		[
-			'body' =>
+			'form_params' =>
 			[
 				'db' => $this->remoteDbName,
-				'server' => $server_id,
-				'token' => $token,
+				'server' => $this->loggedIn->getServerId(),
+				'token' => $this->loggedIn->getToken(),
 				'sql_query' => $this->query,
 				'sql_delimiter' => ';'
 
@@ -130,10 +108,10 @@ class ExecuteSqlViaPhpMyAdminTask extends \Robo\Task\BaseTask
 		])->getBody();
 
 		// Check to make sure it worked
-		if (!Str::contains($response, 'Your SQL query has been executed successfully') && !Str::contains($response, 'Query took'))
+		if (!$this->confirmSuccessfulImport($response))
 		{
 			// Save the response to a temp file for later inspection
-			$responseLog = tempnam(sys_get_temp_dir(), 'taskExecuteSqlViaPhpMyAdminLog');
+			$responseLog = tempnam(sys_get_temp_dir(), 'phpMyAdminResponse');
 			file_put_contents($responseLog, $response);
 
 			// Bail out
@@ -146,6 +124,28 @@ class ExecuteSqlViaPhpMyAdminTask extends \Robo\Task\BaseTask
 		}
 
 		// If we get to here assume everything worked
-		return \Robo\Result::success($this);
+		return Result::success($this);
+	}
+
+	/**
+	 * Given a html response we will check for certian phrases
+	 * to suggest if the sql executed succesfully or not.
+	 *
+	 * @param  string $html
+	 * @return boolean
+	 */
+	private function confirmSuccessfulImport($html)
+	{
+		$html = s::create($html);
+
+		if ($html->contains('Your SQL query has been executed successfully'))
+		{
+			if ($html->contains('Query took'))
+			{
+				return true;
+			}
+		}
+
+		return false;
 	}
 }
