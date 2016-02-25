@@ -29,7 +29,7 @@
 		"wp-cli/wp-cli": "^0.22.0",
 		"jeremeamia/superclosure": "^2.0",
 		"interconnectit/search-replace-db": "^3.0",
-		"phpunit/phpunit": "^5.0",
+		"phpunit/phpunit": "^4.8",
 		"phpmyadmin/phpmyadmin": "4.5.4.*",
 		"phpseclib/phpseclib": "^2.0"
 	},
